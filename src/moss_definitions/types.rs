@@ -47,9 +47,9 @@ pub struct ExtensionInfo {
 pub struct ContextButton {
     pub text: String,
     pub icon: String,
-    pub context_icon: String,
-    pub action: String,
-    pub context_menu: String,
+    pub context_icon: Option<String>,
+    pub action: Option<String>,
+    pub context_menu: Option<String>,
 }
 
 #[derive(ToBytes, Serialize, PartialEq, Debug)]

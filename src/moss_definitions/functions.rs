@@ -18,7 +18,6 @@ extern "ExtismHost" {
     #[link_name = "moss_defaults_set"]
     fn _moss_defaults_set<T: Serialize>(value: ConfigSet<T>);
 
-
     // Extension manager
     pub fn moss_em_config_get<T: for<'de> Deserialize<'de>>(key: &str) -> ConfigGet<T>;
     #[link_name = "moss_em_config_set"]
