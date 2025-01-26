@@ -1,5 +1,5 @@
 [package]
-name = "moss_rust_extension"
+name = "rust_sdk_tester"
 version = "0.1.0"
 edition = "2021"
 

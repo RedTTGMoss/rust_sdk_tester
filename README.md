@@ -1,8 +1,5 @@
-# Moss rust extension template
-This repo contains a template for creating Moss extensions 
-
-You can clone/fork this repo directly into `content/extensions` in Moss user data
-and enable the extension to get started
+# Moss rust SDK tester
+This repo contains a tester for all interactions with the Moss rust SDK
 
 ## Installation from GitHub
 1. Download the latest release
