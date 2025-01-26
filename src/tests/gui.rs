@@ -1,7 +1,7 @@
 use crate::moss_definitions::functions::*;
 use crate::moss_definitions::types::*;
 
-pub unsafe fn check_icon(state: MossState) {
+pub unsafe fn check_icon(state: &MossState) {
     // Check for the test icon and invert it
     for icon in state.icons.iter() {
         if icon == "test_icon" {
@@ -17,6 +17,6 @@ pub unsafe fn check_icon(state: MossState) {
 
 
 
-pub unsafe fn run_all_gui_tests(state: MossState) {
+pub unsafe fn run_all_gui_tests(state: &MossState) {
     check_icon(state);
 }

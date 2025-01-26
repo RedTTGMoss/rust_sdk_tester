@@ -13,6 +13,8 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
     moss_em_config_set::<bool>("initialized", false);
     moss_em_config_set::<bool>("icon_loaded", false);
     moss_em_config_set::<bool>("icon_inverted", false);
+    moss_em_config_set::<bool>("test_defaults_set<String>", false);
+    moss_em_config_set::<bool>("test_defaults_set<TestTypes>", false);
     moss_em_config_set::<bool>("test_defaults_set_color_no_alpha", false);
     moss_em_config_set::<bool>("test_defaults_set_color_with_alpha", false);
     moss_em_config_set::<bool>("test_defaults_set_text_color_no_alpha_no_background", false);
@@ -37,6 +39,8 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
         false,
     );
 
+    run_all_defaults_tests();
+
     warn!("Registering rust SDK tests");
     Ok(ExtensionInfo {
         files: [File {
@@ -54,8 +58,19 @@ pub unsafe fn moss_extension_loop(Json(state): Json<MossState>) -> FnResult<()> 
     if !initialized {
         warn!("Initializing rust SDK tests");
         moss_em_config_set::<bool>("initialized", true);
+        run_all_tests(&state);
+        create_and_open_context_menu();
+    }
 
-        run_all_tests(state);
+    let mut opened = false;
+    for context_menu in state.opened_context_menus.iter() {
+        if context_menu == "test_context_menu" {
+            opened = true;
+            break;
+        }
+    }
+    if !opened {
+        open_context_menu();
     }
 
     Ok(())
