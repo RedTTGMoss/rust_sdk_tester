@@ -1,4 +1,5 @@
 /target
+/src/moss_macros/target
 Cargo.lock
 .cargo
 .idea
