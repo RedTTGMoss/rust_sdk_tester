@@ -2,11 +2,13 @@ mod moss_definitions;
 pub use moss_definitions::functions::*;
 pub use moss_definitions::types::*;
 
+mod result_screen;
 mod tests;
 pub use tests::*;
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+use crate::result_screen::ResultScreen;
 
 #[plugin_fn]
 pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<ExtensionInfo> {
@@ -40,6 +42,8 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
     );
 
     run_all_defaults_tests();
+
+    ResultScreen::register();
 
     warn!("Registering rust SDK tests");
     Ok(ExtensionInfo {

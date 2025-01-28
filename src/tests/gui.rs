@@ -7,7 +7,7 @@ pub unsafe fn check_icon(state: &MossState) {
         if icon == "test_icon" {
             moss_em_config_set::<bool>("icon_loaded", true);
 
-            moss_gui_invert_icon("test_icon".to_string(), "test_icon_inverted".to_string()).unwrap();
+            moss_gui_invert_icon("test_icon".to_string(), "test_icon_blue".to_string()).unwrap();
 
             moss_em_config_set::<bool>("icon_inverted", true);
             break;
