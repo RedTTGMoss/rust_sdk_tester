@@ -6,19 +6,6 @@ use crate::moss_definitions::functions::*;
 use crate::moss_definitions::types::*;
 
 #[derive(Serialize)]
-pub struct TestScreen {
-    background_color: Color,
-    title_text: TextRef,
-}
-
-#[moss_screen]
-impl TestScreen {
-    pub fn r#loop() {
-
-    }
-}
-
-#[derive(Serialize)]
 pub struct ResultScreen {
     background_color: Color,
     title_text: TextRef,
