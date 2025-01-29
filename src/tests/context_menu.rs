@@ -34,9 +34,15 @@ pub unsafe fn create_and_open_context_menu() {
         ],
     })
     .unwrap();
-    open_context_menu();
+    open_context_menu(None, None);
 }
 
-pub unsafe fn open_context_menu() {
-    moss_gui_open_context_menu("test_context_menu", 100, 100).unwrap();
+pub unsafe fn open_context_menu(x: Option<i64>, y: Option<i64>) {
+    moss_gui_open_context_menu("test_context_menu", x.unwrap_or(100), y.unwrap_or(100)).unwrap();
+}
+
+#[plugin_fn]
+pub unsafe fn open_context_menu_action(ideal_position: Rect) -> FnResult<()> {
+    open_context_menu(Some(ideal_position.x), Some(ideal_position.y));
+    Ok(())
 }

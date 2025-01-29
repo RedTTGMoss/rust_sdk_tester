@@ -45,6 +45,14 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
 
     ResultScreen::register();
 
+    moss_em_register_extension_button(ContextButton {
+        text: "Rust SDK Tester".to_string(),
+        icon: "test_icon".to_string(),
+        context_icon: None,
+        action: Some("ResultScreen_open_action".to_string()),
+        context_menu: Some("open_context_menu_action".to_string()),
+    })?;
+
     warn!("Registering rust SDK tests");
     Ok(ExtensionInfo {
         files: [File {
@@ -64,17 +72,6 @@ pub unsafe fn moss_extension_loop(Json(state): Json<MossState>) -> FnResult<()> 
         moss_em_config_set::<bool>("initialized", true);
         run_all_tests(&state);
         create_and_open_context_menu();
-    }
-
-    let mut opened = false;
-    for context_menu in state.opened_context_menus.iter() {
-        if context_menu == "test_context_menu" {
-            opened = true;
-            break;
-        }
-    }
-    if !opened {
-        open_context_menu();
     }
 
     Ok(())
