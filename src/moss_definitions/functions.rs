@@ -1,3 +1,4 @@
+use std::time::{SystemTime, UNIX_EPOCH};
 use crate::moss_definitions::types::*;
 use extism_pdk::json::to_vec;
 use extism_pdk::*;
@@ -26,6 +27,8 @@ extern "ExtismHost" {
     pub fn moss_em_get_state() -> MossState;
     pub fn moss_em_register_extension_button(button: ContextButton);
 
+    pub fn moss_em_loader_progress() -> ConfigGet<f64>;
+
     // PygameExtra
     #[link_name = "moss_pe_draw_rect"]
     fn _moss_pe_draw_rect(draw: PygameExtraRect);
@@ -38,6 +41,39 @@ extern "ExtismHost" {
     pub fn moss_pe_get_screen_value<T: for<'de> Deserialize<'de>>(key: &str) -> ConfigGet<T>;
     #[link_name = "moss_pe_set_screen_value"]
     fn _moss_pe_set_screen_value<T: Serialize>(value: ConfigSet<T>);
+
+    // API
+    pub fn moss_api_document_get<T: for<'de> Deserialize<'de>>(document_uuid: &str, key: &str) -> ConfigGet<T>;
+    // TODO: Finish implementing moss_api_document_set
+    // #[link_name = "moss_api_document_set"]
+    // pub fn _moss_api_document_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
+    pub fn moss_api_document_get_all(document_uuid: &str) -> RM_Document;
+    pub fn moss_api_collection_get<T: for<'de> Deserialize<'de>>(collection_uuid: &str, key: &str) -> ConfigGet<T>;
+    // TODO: Finish implementing moss_api_collection_set
+    // #[link_name = "moss_api_collection_set"]
+    // pub fn _moss_api_collection_set<T: Serialize>(collection_uuid: &str, value: ConfigSet<T>);
+    pub fn moss_api_collection_get_all(collection_uuid: &str) -> RM_DocumentCollection;
+    pub fn moss_api_collection_metadata_get<T: for<'de> Deserialize<'de>>(collection_uuid: &str, key: &str) -> ConfigGet<T>;
+    // TODO: Finish implementing moss_api_collection_metadata_set
+    // #[link_name = "moss_api_collection_metadata_set"]
+    // pub fn _moss_api_collection_metadata_set<T: Serialize>(collection_uuid: &str, value: ConfigSet<T>);
+    pub fn moss_api_collection_metadata_get_all(collection_uuid: &str) -> RM_Metadata;
+    pub fn moss_api_document_metadata_get<T: for<'de> Deserialize<'de>>(document_uuid: &str, key: &str) -> ConfigGet<T>;
+    // TODO: Finish implementing moss_api_document_metadata_set
+    // #[link_name = "moss_api_document_metadata_set"]
+    // pub fn _moss_api_document_metadata_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
+    pub fn moss_api_document_metadata_get_all(document_uuid: &str) -> RM_Metadata;
+    // pub fn moss_api_metadata_get(item, key: str) -> TValue
+    // pub fn moss_api_metadata_set(item, key: str, typing.Any)
+    // pub fn moss_api_metadata_get_all(item) -> TRM_MetadataDocument
+    pub fn moss_api_document_content_get<T: for<'de> Deserialize<'de>>(document_uuid: &str, key: &str) -> ConfigGet<T>;
+    // TODO: Finish implementing moss_api_document_content_set
+    // #[link_name = "moss_api_document_content_set"]
+    // pub fn _moss_api_document_content_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
+    pub fn moss_api_document_content_get_all(document_uuid: &str) -> RM_Content;
+    // pub fn moss_api_content_get(item, key: str) -> TValue
+    // pub fn moss_api_content_set(item, key: str, typing.Any)
+    // pub fn moss_api_content_get_all(item) -> TRM_Content
 }
 
 pub unsafe fn moss_em_config_set<T: Serialize>(key: &str, value: T) {
@@ -162,4 +198,11 @@ pub unsafe fn moss_text_set_font(text_id: i64, font: &str, font_size: i64) -> Re
 pub unsafe fn moss_text_display(text_id: i64) -> Result<(), Error> {
     let res = moss_text_display_impl(text_id);
     Ok(res)
+}
+
+pub fn get_rm_time_now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as i64
 }

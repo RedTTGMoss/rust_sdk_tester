@@ -1,8 +1,7 @@
-use crate::{
-    moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect,
-    moss_text_set_text,
-};
-use extism_pdk::{info, FromBytes, Json, ToBytes};
+use std::collections::HashMap;
+use crate::{get_rm_time_now, moss_api_document_get_all, moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text};
+// use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use extism_pdk::{error, info, FromBytes, Json, ToBytes};
 use moss_macros::moss_color;
 use serde::{Deserialize, Serialize};
 
@@ -304,4 +303,213 @@ impl TextRef {
     pub unsafe fn display(&self) {
         moss_text_display(self.text_id).unwrap();
     }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_File {
+    pub content_count: i64,
+    pub hash: String,
+    pub rm_filename: String,
+    pub size: i64,
+    pub uuid: String,
+}
+
+impl RM_File {
+    pub fn new(content_count: i64, hash: &str, rm_filename: &str, size: i64, uuid: &str) -> Self {
+        Self {
+            content_count,
+            hash: hash.to_string(),
+            rm_filename: rm_filename.to_string(),
+            size,
+            uuid: uuid.to_string(),
+        }
+    }
+    // TODO: get_contents
+    // TODO: get_files
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_TimestampedValue<T> {
+    pub timestamp: String,
+    pub value: T,
+}
+
+impl<T> RM_TimestampedValue<T> {
+    pub fn new(timestamp: &str, value: T) -> Self {
+        Self {
+            timestamp: timestamp.to_string(),
+            value,
+        }
+    }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_TimestampedDate {
+    timestamp: String,
+    pub value: String,
+}
+
+impl RM_TimestampedDate {
+    pub fn new(timestamp: &str, value: &str) -> Self {
+        Self {
+            timestamp: timestamp.to_string(),
+            value: value.to_string(),
+        }
+    }
+
+    // pub fn get_timestamp(&self) -> i64 {
+    //     let datetime: DateTime<Utc> = self.timestamp.parse().expect("Invalid timestamp");
+    //     datetime.timestamp()
+    // }
+    //
+    // pub fn set_timestamp(&mut self, timestamp: i64) {
+    //     let datetime_back = Utc
+    //         .timestamp_opt(timestamp, 0)
+    //         .single()
+    //         .expect("Invalid timestamp");
+    //     let iso_string = datetime_back.to_rfc3339_opts(SecondsFormat::Secs, true);
+    //     self.timestamp = iso_string;
+    // }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Tag {
+    pub name: String,
+    pub timestamp: i64,
+}
+
+impl RM_Tag {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            timestamp: get_rm_time_now(),
+        }
+    }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Page {
+    pub id: String,
+    pub index: RM_TimestampedValue<String>,
+    pub template: RM_TimestampedValue<String>,
+    pub redirect: Option<RM_TimestampedValue<i64>>,
+    pub scroll_time: Option<RM_TimestampedDate>,
+    pub vertical_scroll: Option<RM_TimestampedValue<i64>>,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_CPagesUUID {
+    pub first: String,
+    pub second: i64,
+}
+
+impl RM_CPagesUUID {
+    pub fn new(first: &str, second: i64) -> Self {
+        Self {
+            first: first.to_string(),
+            second,
+        }
+    }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_CPages {
+    pub pages: Vec<RM_Page>,
+    pub original: RM_TimestampedValue<i64>,
+    pub last_opened: RM_TimestampedValue<String>,
+    pub uuids: Vec<RM_CPagesUUID>,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Zoom { // RAW
+    pub zoomMode: String,
+    pub customZoomCenterX: i64,
+    pub customZoomCenterY: i64,
+    pub customZoomPageHeight: i64,
+    pub customZoomPageWidth: i64,
+    pub customZoomScale: f64,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Content {
+    pub hash: String,
+    pub c_pages: RM_CPages,
+    pub cover_page_number: i64,
+    pub file_type: String,
+    pub version: i64,
+    pub usable: bool,
+    pub zoom: RM_Zoom,
+    pub orientation: String,
+    pub tags: Vec<RM_Tag>,
+    pub size_in_bytes: i64,
+    pub dummy_document: bool,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Metadata {
+    pub hash: String,
+    pub r#type: String,
+    pub parent: Option<String>,
+    pub created_time: i64,
+    pub last_modified: i64,
+    pub visible_name: String,
+    pub metadata_modified: bool,
+    pub modified: bool,
+    pub synced: bool,
+    pub version: Option<i64>,
+    pub last_opened: Option<i64>,
+    pub last_opened_page: Option<i64>,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_DocumentCollection {
+    pub tags: Vec<RM_Tag>,
+    pub metadata: RM_Metadata,
+    pub uuid: String,
+    pub has_items: bool,
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_Document {
+    pub files: Vec<RM_File>,
+    pub content_data: HashMap<String, Vec<u8>>,
+    pub content: RM_Content,
+    pub metadata: RM_Metadata,
+    pub uuid: String,
+    pub server_hash: String,
+    pub files_available: Vec<String>,
+    pub downloading: bool,
+    pub provision: bool,
+    pub available: bool,
+}
+
+impl RM_Document {
+    pub unsafe fn get(uuid: &str) -> Self {
+        match moss_api_document_get_all(uuid) {
+            Ok(document) => document,
+            Err(e) => {
+                error!("Error retrieving document: {:?}", e);
+                panic!("Failed to retrieve document");
+            }
+        }
+    }
+}
+
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[encoding(Json)]
+pub struct RM_RootInfo {
+    pub generation: i64,
+    pub hash: String,
 }
