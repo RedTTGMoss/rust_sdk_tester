@@ -40,6 +40,7 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
         "test_defaults_set_text_color_with_alpha_with_background_with_alpha",
         false,
     );
+    moss_em_config_set::<bool>("test_api_document_get_full", false);
 
     run_all_defaults_tests();
 
@@ -66,8 +67,9 @@ pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<
 #[plugin_fn]
 pub unsafe fn moss_extension_loop(Json(state): Json<MossState>) -> FnResult<()> {
     let initialized = moss_em_config_get::<bool>("initialized")?.value;
+    let loader_progress = moss_em_loader_progress()?.value;
 
-    if !initialized {
+    if !initialized && loader_progress == 1.0 {
         warn!("Initializing rust SDK tests");
         moss_em_config_set::<bool>("initialized", true);
         run_all_tests(&state);
