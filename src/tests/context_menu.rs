@@ -2,7 +2,7 @@ use crate::moss_definitions::functions::*;
 use crate::moss_definitions::types::*;
 use extism_pdk::{plugin_fn, FnResult};
 
-pub unsafe fn create_and_open_context_menu() {
+pub unsafe fn create_context_menu() {
     let key = "test_context_menu".to_string();
     moss_gui_register_context_menu(ContextMenu {
         key,
@@ -34,7 +34,6 @@ pub unsafe fn create_and_open_context_menu() {
         ],
     })
     .unwrap();
-    open_context_menu(None, None);
 }
 
 pub unsafe fn open_context_menu(x: Option<i64>, y: Option<i64>) {

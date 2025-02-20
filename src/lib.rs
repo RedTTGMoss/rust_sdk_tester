@@ -73,7 +73,7 @@ pub unsafe fn moss_extension_loop(Json(state): Json<MossState>) -> FnResult<()> 
         warn!("Initializing rust SDK tests");
         moss_em_config_set::<bool>("initialized", true);
         run_all_tests(&state);
-        create_and_open_context_menu();
+        create_context_menu();
     }
 
     Ok(())
