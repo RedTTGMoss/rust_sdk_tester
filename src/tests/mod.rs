@@ -3,8 +3,8 @@ use gui::*;
 mod api;
 use api::*;
 mod defaults;
-pub use defaults::*;
 use crate::MossState;
+pub use defaults::*;
 
 mod context_menu;
 pub use context_menu::*;

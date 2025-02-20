@@ -6,8 +6,8 @@ mod result_screen;
 mod tests;
 pub use tests::*;
 
-use extism_pdk::*;
 use crate::result_screen::ResultScreen;
+use extism_pdk::*;
 
 #[plugin_fn]
 pub unsafe fn moss_extension_register(Json(_state): Json<MossState>) -> FnResult<ExtensionInfo> {

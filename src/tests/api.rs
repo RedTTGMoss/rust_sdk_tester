@@ -10,29 +10,31 @@ pub unsafe fn run_fetch_test() {
     let _document_uuid = moss_em_config_get::<String>(DOCUMENT_UUID_KEY);
     if _document_uuid.is_err() {
         moss_em_config_set::<String>(DOCUMENT_UUID_KEY, "".to_string());
-        panic!("{}",DOCUMENT_UUID_ERROR);
+        panic!("{}", DOCUMENT_UUID_ERROR);
     } else {
         document_uuid = _document_uuid.unwrap().value;
         if document_uuid.is_empty() {
-            panic!("{}",DOCUMENT_UUID_ERROR);
+            panic!("{}", DOCUMENT_UUID_ERROR);
         }
     }
     let document_collection_uuid;
     let _document_collection_uuid = moss_em_config_get::<String>(DOCUMENT_COLLECTION_UUID_KEY);
     if _document_collection_uuid.is_err() {
         moss_em_config_set::<String>(DOCUMENT_COLLECTION_UUID_KEY, "".to_string());
-        panic!("{}",DOCUMENT_COLLECTION_UUID_ERROR);
+        panic!("{}", DOCUMENT_COLLECTION_UUID_ERROR);
     } else {
         document_collection_uuid = _document_collection_uuid.unwrap().value;
         if document_collection_uuid.is_empty() {
-            panic!("{}",DOCUMENT_COLLECTION_UUID_ERROR);
+            panic!("{}", DOCUMENT_COLLECTION_UUID_ERROR);
         }
     }
 
     let mut document = RM_Document::get(document_uuid.as_str());
     moss_em_config_set::<bool>("test_api_document_get_full", true);
 
-    document.metadata.set_visible_name("TEST SUCCEEDED!".to_string());
+    document
+        .metadata
+        .set_visible_name("TEST SUCCEEDED!".to_string());
 
     moss_em_config_set::<bool>("test_api_document_metadata_set", true);
 }

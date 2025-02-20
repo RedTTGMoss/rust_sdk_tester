@@ -30,7 +30,7 @@ pub struct TestColors {
     pub text_colors_no_alpha_with_background_with_alpha: TextColors,
     pub text_colors_with_alpha_no_background: TextColors,
     pub text_colors_with_alpha_with_background_no_alpha: TextColors,
-    pub text_colors_with_alpha_with_background_with_alpha: TextColors
+    pub text_colors_with_alpha_with_background_with_alpha: TextColors,
 }
 
 impl TestColors {
@@ -86,7 +86,8 @@ pub unsafe fn test_colors(c: &TestColors) {
 }
 
 pub unsafe fn test_text_colors(c: &TestColors) {
-    moss_defaults_set_text_color(TEXT_COLOR.to_string(), c.text_colors_no_alpha_no_background).unwrap();
+    moss_defaults_set_text_color(TEXT_COLOR.to_string(), c.text_colors_no_alpha_no_background)
+        .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_no_alpha_no_background",
@@ -96,7 +97,8 @@ pub unsafe fn test_text_colors(c: &TestColors) {
     moss_defaults_set_text_color(
         TEXT_COLOR.to_string(),
         c.text_colors_no_alpha_with_background_no_alpha,
-    ).unwrap();
+    )
+    .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_no_alpha_with_background_no_alpha",
@@ -106,7 +108,8 @@ pub unsafe fn test_text_colors(c: &TestColors) {
     moss_defaults_set_text_color(
         TEXT_COLOR.to_string(),
         c.text_colors_no_alpha_with_background_with_alpha,
-    ).unwrap();
+    )
+    .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_no_alpha_with_background_with_alpha",
@@ -116,7 +119,8 @@ pub unsafe fn test_text_colors(c: &TestColors) {
     moss_defaults_set_text_color(
         TEXT_COLOR.to_string(),
         c.text_colors_with_alpha_no_background,
-    ).unwrap();
+    )
+    .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_with_alpha_no_background",
@@ -126,7 +130,8 @@ pub unsafe fn test_text_colors(c: &TestColors) {
     moss_defaults_set_text_color(
         TEXT_COLOR.to_string(),
         c.text_colors_with_alpha_with_background_no_alpha,
-    ).unwrap();
+    )
+    .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_with_alpha_with_background_no_alpha",
@@ -136,7 +141,8 @@ pub unsafe fn test_text_colors(c: &TestColors) {
     moss_defaults_set_text_color(
         TEXT_COLOR.to_string(),
         c.text_colors_with_alpha_with_background_with_alpha,
-    ).unwrap();
+    )
+    .unwrap();
     let result_color = moss_defaults_get_text_color(TEXT_COLOR.to_string()).unwrap();
     moss_em_config_set::<bool>(
         "test_defaults_set_text_color_with_alpha_with_background_with_alpha",

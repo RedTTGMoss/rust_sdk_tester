@@ -1,9 +1,9 @@
-use extism_pdk;
-use moss_macros::*;
-use serde::Serialize;
 use crate::moss_definitions;
 use crate::moss_definitions::functions::*;
 use crate::moss_definitions::types::*;
+use extism_pdk;
+use moss_macros::*;
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct ResultScreen {

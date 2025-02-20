@@ -1,7 +1,7 @@
-use extism_pdk::{info, FromBytes, ToBytes, Json};
-use serde::{Deserialize, Serialize};
 use crate::moss_definitions::functions::*;
 use crate::tests::colors::*;
+use extism_pdk::{info, FromBytes, Json, ToBytes};
+use serde::{Deserialize, Serialize};
 
 const FONT_KEYS: [&str; 19] = [
     "CUSTOM_FONT",

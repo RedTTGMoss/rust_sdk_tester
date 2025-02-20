@@ -15,8 +15,6 @@ pub unsafe fn check_icon(state: &MossState) {
     }
 }
 
-
-
 pub unsafe fn run_all_gui_tests(state: &MossState) {
     check_icon(state);
 }
