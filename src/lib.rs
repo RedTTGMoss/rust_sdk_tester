@@ -7,11 +7,10 @@ mod tests;
 pub use tests::*;
 
 use extism_pdk::*;
-use serde::{Deserialize, Serialize};
 use crate::result_screen::ResultScreen;
 
 #[plugin_fn]
-pub unsafe fn moss_extension_register(Json(state): Json<MossState>) -> FnResult<ExtensionInfo> {
+pub unsafe fn moss_extension_register(Json(_state): Json<MossState>) -> FnResult<ExtensionInfo> {
     moss_em_config_set::<bool>("initialized", false);
     moss_em_config_set::<bool>("icon_loaded", false);
     moss_em_config_set::<bool>("icon_inverted", false);

@@ -1,5 +1,4 @@
 use crate::{moss_em_config_get, moss_em_config_set, RM_Document};
-use extism_pdk::info;
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
 const DOCUMENT_COLLECTION_UUID_ERROR: &str =
