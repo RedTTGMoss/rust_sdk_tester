@@ -1,8 +1,10 @@
+#![allow(non_camel_case_types)]
+
 use std::collections::HashMap;
-use crate::{get_rm_time_now, moss_api_document_get_all, moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text};
+use crate::{get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all, moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text};
 // use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
-use extism_pdk::{error, info, FromBytes, Json, ToBytes};
-use moss_macros::moss_color;
+use extism_pdk::{error, FromBytes, Json, ToBytes};
+use moss_macros::{moss_color, MetadataAccessors};
 use serde::{Deserialize, Serialize};
 
 #[derive(ToBytes, FromBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
@@ -427,6 +429,7 @@ pub struct RM_CPages {
     pub uuids: Vec<RM_CPagesUUID>,
 }
 
+#[allow(non_snake_case)]
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
 #[encoding(Json)]
 pub struct RM_Zoom { // RAW
@@ -454,7 +457,7 @@ pub struct RM_Content {
     pub dummy_document: bool,
 }
 
-#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, MetadataAccessors)]
 #[encoding(Json)]
 pub struct RM_Metadata {
     pub hash: String,
@@ -469,6 +472,8 @@ pub struct RM_Metadata {
     pub version: Option<i64>,
     pub last_opened: Option<i64>,
     pub last_opened_page: Option<i64>,
+    pub document_uuid: Option<String>,
+    pub metadata_id: Option<String>
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
@@ -478,6 +483,18 @@ pub struct RM_DocumentCollection {
     pub metadata: RM_Metadata,
     pub uuid: String,
     pub has_items: bool,
+}
+
+impl RM_DocumentCollection {
+    pub unsafe fn get(uuid: &str) -> Self {
+        match moss_api_collection_get_all(uuid) {
+            Ok(document_collection) => document_collection,
+            Err(e) => {
+                error!("Error retrieving document collection: {:?}", e);
+                panic!("Failed to retrieve document collection");
+            }
+        }
+    }
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]

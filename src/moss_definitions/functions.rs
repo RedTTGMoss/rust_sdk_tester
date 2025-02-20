@@ -59,12 +59,12 @@ extern "ExtismHost" {
     // pub fn _moss_api_collection_metadata_set<T: Serialize>(collection_uuid: &str, value: ConfigSet<T>);
     pub fn moss_api_collection_metadata_get_all(collection_uuid: &str) -> RM_Metadata;
     pub fn moss_api_document_metadata_get<T: for<'de> Deserialize<'de>>(document_uuid: &str, key: &str) -> ConfigGet<T>;
-    // TODO: Finish implementing moss_api_document_metadata_set
-    // #[link_name = "moss_api_document_metadata_set"]
-    // pub fn _moss_api_document_metadata_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
+    #[link_name = "moss_api_document_metadata_set"]
+    pub fn _moss_api_document_metadata_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
     pub fn moss_api_document_metadata_get_all(document_uuid: &str) -> RM_Metadata;
     // pub fn moss_api_metadata_get(item, key: str) -> TValue
-    // pub fn moss_api_metadata_set(item, key: str, typing.Any)
+    #[link_name = "moss_api_metadata_set"]
+    pub fn _moss_api_metadata_set<T: Serialize>(metadata_id: &str, value: ConfigSet<T>);
     // pub fn moss_api_metadata_get_all(item) -> TRM_MetadataDocument
     pub fn moss_api_document_content_get<T: for<'de> Deserialize<'de>>(document_uuid: &str, key: &str) -> ConfigGet<T>;
     // TODO: Finish implementing moss_api_document_content_set
@@ -115,6 +115,27 @@ pub unsafe fn moss_pe_draw_rect(
         rect,
         width,
         edge_rounding,
+    });
+}
+
+pub unsafe fn moss_api_document_metadata_set<T: Serialize>(
+    document_uuid: &str,
+    key: &str,
+    value: T,
+) {
+    let _ = _moss_api_document_metadata_set(document_uuid, ConfigSet::<T> {
+        key: key.into(),
+        value,
+    });
+}
+pub unsafe fn moss_api_metadata_set<T: Serialize>(
+    metadata_id: &str,
+    key: &str,
+    value: T,
+) {
+    let _ = _moss_api_metadata_set(metadata_id, ConfigSet::<T> {
+        key: key.into(),
+        value,
     });
 }
 

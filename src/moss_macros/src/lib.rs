@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemImpl, FnArg, LitInt};
+use syn::{parse_macro_input, ItemImpl, FnArg, LitInt, DeriveInput};
 
 #[proc_macro_attribute]
 pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -63,7 +63,7 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let open_methods = quote! {
         pub unsafe fn register() {
-            moss_definitions::functions::moss_pe_register_screen(moss_definitions::types::MossScreen {
+            crate::moss_definitions::functions::moss_pe_register_screen(moss_definitions::types::MossScreen {
                 key: #struct_name_str.to_string(),
                 screen_pre_loop: #pre_loop_function,
                 screen_loop: #loop_function.to_string(),
@@ -72,11 +72,11 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
             });
         }
         pub unsafe fn open() {
-            moss_definitions::functions::moss_pe_open_screen(#struct_name_str, ()).unwrap()
+            crate::moss_definitions::functions::moss_pe_open_screen(#struct_name_str, ()).unwrap()
         }
 
         pub unsafe fn open_with_data(initial_data: Self) {
-            moss_definitions::functions::moss_pe_open_screen::<Self>(#struct_name_str, initial_data).unwrap()
+            crate::moss_definitions::functions::moss_pe_open_screen::<Self>(#struct_name_str, initial_data).unwrap()
         }
     };
 
@@ -126,4 +126,90 @@ pub fn moss_color(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(MetadataAccessors)]
+pub fn metadata_accessors_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    if let syn::Data::Struct(data_struct) = input.data {
+        let mut getters_setters = Vec::new();
+        let mut has_document_uuid = false;
+        let mut has_metadata_id = false;
+
+        for field in data_struct.fields.iter() {
+            if let Some(field_ident) = &field.ident {
+                let field_ty = &field.ty;
+                let field_name = field_ident.to_string();
+                let setter_ident = format_ident!("set_{}", field_ident);
+
+                if field_name == "document_uuid" {
+                    has_document_uuid = true;
+                    continue; // Skip generating accessors for document_uuid
+                }
+
+                if field_name == "metadata_id" {
+                    has_metadata_id = true;
+                    continue; // Skip generating accessors for metadata_id
+                }
+
+                let getter = quote! {
+                    pub unsafe fn #field_ident(&self) -> &#field_ty {
+                        &self.#field_ident
+                    }
+                };
+
+                let setter = if field_ty == &syn::parse_str("String").unwrap() || field_ty == &syn::parse_str("Option<String>").unwrap() {
+                    quote! {
+                        pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
+                            self.#field_ident = value.clone();
+                            if let Some(ref document_uuid) = self.document_uuid {
+                                crate::moss_definitions::functions::moss_api_document_metadata_set::<#field_ty>(document_uuid, #field_name, value);
+                            } else if let Some(ref metadata_id) = self.metadata_id {
+                                crate::moss_definitions::functions::moss_api_metadata_set::<#field_ty>(metadata_id, #field_name, value);
+                            } else {
+                                panic!("Neither document_uuid nor metadata_id is set!");
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
+                            self.#field_ident = value;
+                            if let Some(ref document_uuid) = self.document_uuid {
+                                crate::moss_definitions::functions::moss_api_document_metadata_set::<#field_ty>(document_uuid, #field_name, value);
+                            } else if let Some(ref metadata_id) = self.metadata_id {
+                                crate::moss_definitions::functions::moss_api_metadata_set::<#field_ty>(metadata_id, #field_name, value);
+                            } else {
+                                panic!("Neither document_uuid nor metadata_id is set!");
+                            }
+                        }
+                    }
+                };
+
+                getters_setters.push(getter);
+                getters_setters.push(setter);
+            }
+        }
+
+        if !has_document_uuid || !has_metadata_id {
+            return syn::Error::new_spanned(
+                struct_name,
+                "Struct must have both `document_uuid: Option<String>` and `metadata_id: Option<String>` fields.",
+            )
+                .to_compile_error()
+                .into();
+        }
+
+        let expanded = quote! {
+            impl #struct_name {
+                #(#getters_setters)*
+            }
+        };
+
+        TokenStream::from(expanded)
+    } else {
+        TokenStream::new()
+    }
 }
