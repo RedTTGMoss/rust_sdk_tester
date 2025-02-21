@@ -25,6 +25,7 @@ extern "ExtismHost" {
     #[link_name = "moss_em_config_set"]
     fn _moss_em_config_set<T: Serialize>(value: ConfigSet<T>);
     pub fn moss_em_get_state() -> MossState;
+    pub fn moss_em_export_statistical_data();
     pub fn moss_em_register_extension_button(button: ContextButton);
 
     pub fn moss_em_loader_progress() -> ConfigGet<f64>;
