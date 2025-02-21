@@ -1,11 +1,14 @@
 #![allow(non_camel_case_types)]
 
-use std::collections::HashMap;
-use crate::{get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all, moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text};
+use crate::{
+    get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all, moss_text_display,
+    moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text,
+};
 // use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use extism_pdk::{error, FromBytes, Json, ToBytes};
 use moss_macros::{moss_color, MetadataAccessors};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(ToBytes, FromBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
 #[encoding(Json)]
@@ -432,7 +435,8 @@ pub struct RM_CPages {
 #[allow(non_snake_case)]
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
 #[encoding(Json)]
-pub struct RM_Zoom { // RAW
+pub struct RM_Zoom {
+    // RAW
     pub zoomMode: String,
     pub customZoomCenterX: i64,
     pub customZoomCenterY: i64,
@@ -457,7 +461,9 @@ pub struct RM_Content {
     pub dummy_document: bool,
 }
 
-#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, MetadataAccessors)]
+#[derive(
+    FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, MetadataAccessors,
+)]
 #[encoding(Json)]
 pub struct RM_Metadata {
     pub hash: String,
@@ -473,7 +479,8 @@ pub struct RM_Metadata {
     pub last_opened: Option<i64>,
     pub last_opened_page: Option<i64>,
     pub document_uuid: Option<String>,
-    pub metadata_id: Option<String>
+    pub collection_uuid: Option<String>,
+    pub metadata_id: Option<String>,
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
