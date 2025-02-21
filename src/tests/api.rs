@@ -1,4 +1,4 @@
-use crate::{moss_em_config_get, moss_em_config_set, RM_Document};
+use crate::{moss_em_config_get, moss_em_config_set, RM_Document, RM_DocumentCollection};
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
 const DOCUMENT_COLLECTION_UUID_ERROR: &str =
@@ -37,6 +37,15 @@ pub unsafe fn run_fetch_test() {
         .set_visible_name("TEST SUCCEEDED!".to_string());
 
     moss_em_config_set::<bool>("test_api_document_metadata_set", true);
+
+    let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
+    moss_em_config_set::<bool>("test_api_collection_get_full", true);
+
+    document_collection
+        .metadata
+        .set_visible_name("TEST SUCCEEDED!".to_string());
+
+    moss_em_config_set::<bool>("test_api_collection_metadata_set", true);
 }
 
 pub unsafe fn run_all_api_tests() {
