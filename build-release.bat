@@ -1,3 +1,3 @@
-rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown
-copy target\wasm32-unknown-unknown\release\*.wasm .
+rustup target add wasm32-wasip1
+cargo build --release --target wasm32-wasip1
+copy target\wasm32-wasip1\release\*.wasm .

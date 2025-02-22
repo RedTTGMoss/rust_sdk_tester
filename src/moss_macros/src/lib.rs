@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitInt};
+use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitInt, Visibility};
 
 #[proc_macro_attribute]
 pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -19,38 +19,49 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for item in input.items.iter() {
         if let syn::ImplItem::Fn(func) = item {
-            let func_name = &func.sig.ident;
-            let new_func_name = format_ident!("{}_{}", struct_name, func_name);
+            if let Visibility::Public(_) = func.vis {
+                let func_name = &func.sig.ident;
+                let new_func_name = format_ident!("{}_{}", struct_name, func_name);
 
-            let inputs = &func.sig.inputs;
-            let inputs_transformed = inputs.iter().map(|arg| match arg {
-                FnArg::Receiver(_) => arg.clone(),
-                FnArg::Typed(pat) => {
-                    let mut pat = pat.clone();
-                    pat.attrs.clear(); // Remove attributes
-                    FnArg::Typed(pat)
+                let inputs = &func.sig.inputs;
+                let inputs_transformed = inputs.iter().map(|arg| match arg {
+                    FnArg::Receiver(_) => arg.clone(),
+                    FnArg::Typed(pat) => {
+                        let mut pat = pat.clone();
+                        pat.attrs.clear(); // Remove attributes
+                        FnArg::Typed(pat)
+                    }
+                });
+
+                let block = &func.block;
+                let new_block = quote! {
+                    {
+                        #block
+                        Ok(())
+                    }
+                };
+
+                transformed_methods.push(quote! {
+                    #[extism_pdk::plugin_fn]
+                    pub unsafe fn #new_func_name(#(#inputs_transformed),*) -> extism_pdk::FnResult<()> #new_block
+                });
+
+                match func_name.to_string().as_str() {
+                    "r#loop" => loop_function = Some(new_func_name.to_string()),
+                    "pre_loop" => pre_loop_function = Some(new_func_name.to_string()),
+                    "post_loop" => post_loop_function = Some(new_func_name.to_string()),
+                    "event_hook" => event_hook_function = Some(new_func_name.to_string()),
+                    _ => {}
                 }
-            });
+            } else {
+                let func_name = &func.sig.ident;
+                let inputs: Vec<_> = func.sig.inputs.iter().cloned().collect();
+                let output = &func.sig.output;
+                let block = &func.block;
 
-            let block = &func.block;
-            let new_block = quote! {
-                {
-                    #block
-                    Ok(())
-                }
-            };
-
-            transformed_methods.push(quote! {
-                #[extism_pdk::plugin_fn]
-                pub unsafe fn #new_func_name(#(#inputs_transformed),*) -> extism_pdk::FnResult<()> #new_block
-            });
-
-            match func_name.to_string().as_str() {
-                "r#loop" => loop_function = Some(new_func_name.to_string()),
-                "pre_loop" => pre_loop_function = Some(new_func_name.to_string()),
-                "post_loop" => post_loop_function = Some(new_func_name.to_string()),
-                "event_hook" => event_hook_function = Some(new_func_name.to_string()),
-                _ => {}
+                transformed_methods.push(quote! {
+                    unsafe fn #func_name(#(#inputs), *) #output #block
+                });
             }
         }
     }

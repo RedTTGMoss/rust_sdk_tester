@@ -478,9 +478,10 @@ pub struct RM_Metadata {
     pub version: Option<i64>,
     pub last_opened: Option<i64>,
     pub last_opened_page: Option<i64>,
+    // reference data
     pub document_uuid: Option<String>,
     pub collection_uuid: Option<String>,
-    pub metadata_id: Option<String>,
+    pub metadata_id: Option<i64>,
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]

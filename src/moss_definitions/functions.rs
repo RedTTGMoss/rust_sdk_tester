@@ -38,6 +38,7 @@ extern "ExtismHost" {
     pub fn moss_pe_register_screen(screen: MossScreen);
     #[link_name = "moss_pe_open_screen"]
     fn _moss_pe_open_screen(key: String, initial_values: Vec<u8>);
+    pub fn moss_pe_close_screen();
 
     pub fn moss_pe_get_screen_value<T: for<'de> Deserialize<'de>>(key: &str) -> ConfigGet<T>;
     #[link_name = "moss_pe_set_screen_value"]
@@ -79,7 +80,7 @@ extern "ExtismHost" {
     pub fn moss_api_document_metadata_get_all(document_uuid: &str) -> RM_Metadata;
     // pub fn moss_api_metadata_get(item, key: str) -> TValue
     #[link_name = "moss_api_metadata_set"]
-    pub fn _moss_api_metadata_set<T: Serialize>(metadata_id: &str, value: ConfigSet<T>);
+    pub fn _moss_api_metadata_set<T: Serialize>(metadata_id: &i64, value: ConfigSet<T>);
     // pub fn moss_api_metadata_get_all(item) -> TRM_MetadataDocument
     pub fn moss_api_document_content_get<T: for<'de> Deserialize<'de>>(
         document_uuid: &str,
@@ -123,14 +124,14 @@ pub unsafe fn moss_defaults_set<T: Serialize>(key: &str, value: T) {
 }
 
 pub unsafe fn moss_pe_draw_rect(
-    color: Color,
-    rect: Rect,
+    color: &Color,
+    rect: &Rect,
     width: i64,
     edge_rounding: Option<PygameExtraRectEdgeRounding>,
 ) {
     let _ = _moss_pe_draw_rect(PygameExtraRect {
-        color,
-        rect,
+        color: color.to_owned(),
+        rect: rect.to_owned(),
         width,
         edge_rounding,
     });
@@ -164,7 +165,7 @@ pub unsafe fn moss_api_collection_metadata_set<T: Serialize>(
     );
 }
 
-pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: &str, key: &str, value: T) {
+pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: &i64, key: &str, value: T) {
     let _ = _moss_api_metadata_set(
         metadata_id,
         ConfigSet::<T> {
