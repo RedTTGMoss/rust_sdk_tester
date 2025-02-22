@@ -45,6 +45,7 @@ pub unsafe fn moss_extension_register(Json(_state): Json<MossState>) -> FnResult
     moss_em_config_set::<bool>("test_api_document_metadata_set", false);
     moss_em_config_set::<bool>("test_api_collection_get_full", false);
     moss_em_config_set::<bool>("test_api_collection_metadata_set", false);
+    moss_em_config_set::<bool>("completed", false);
 
     run_all_defaults_tests();
 
