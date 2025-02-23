@@ -1,5 +1,6 @@
 use crate::{
     moss_api_collection_metadata_get, moss_api_collection_metadata_get_all,
+    moss_api_document_content_get, moss_api_document_content_get_all,
     moss_api_document_metadata_get, moss_api_document_metadata_get_all, moss_em_config_get,
     moss_em_config_set, RM_Document, RM_DocumentCollection,
 };
@@ -37,12 +38,21 @@ pub unsafe fn run_fetch_test() {
     document
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
+    document.content.set_usable(true);
 
     let mut document_metadata = moss_api_document_metadata_get_all(document_uuid.as_str()).unwrap();
+    let mut document_content = moss_api_document_content_get_all(document_uuid.as_str()).unwrap();
     document_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
+    document_content.set_usable(false);
     assert_eq!(
         document_metadata.visible_name,
         moss_api_document_metadata_get::<String>(document_uuid.as_str(), "visible_name")
+            .unwrap()
+            .value
+    );
+    assert_eq!(
+        document_content.usable,
+        moss_api_document_content_get::<bool>(document_uuid.as_str(), "usable")
             .unwrap()
             .value
     );
