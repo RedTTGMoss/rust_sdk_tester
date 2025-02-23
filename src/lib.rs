@@ -1,5 +1,3 @@
-extern crate alloc;
-
 mod moss_definitions;
 pub use moss_definitions::functions::*;
 pub use moss_definitions::types::*;
