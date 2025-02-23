@@ -10,6 +10,7 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => panic!("Unsupported type for impl"),
     };
     let struct_name_str = struct_name.to_string();
+    let screen_manager = format_ident!("{}_SCREEN_MANAGER", struct_name.to_string().to_uppercase());
 
     let mut transformed_methods = Vec::new();
     let mut loop_function = None;
@@ -21,29 +22,73 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
         if let syn::ImplItem::Fn(func) = item {
             if let Visibility::Public(_) = func.vis {
                 let func_name = &func.sig.ident;
-                let new_func_name = format_ident!("{}_{}", struct_name, func_name);
+                let mut new_func_name = format_ident!("{}_{}", struct_name, func_name);
+                let mut uses_self = false;
 
                 let inputs = &func.sig.inputs;
-                let inputs_transformed = inputs.iter().map(|arg| match arg {
-                    FnArg::Receiver(_) => arg.clone(),
-                    FnArg::Typed(pat) => {
-                        let mut pat = pat.clone();
-                        pat.attrs.clear(); // Remove attributes
-                        FnArg::Typed(pat)
+                let mut inputs_transformed = Vec::new();
+
+                for arg in inputs {
+                    match arg {
+                        FnArg::Receiver(receiver) => {
+                            if receiver.reference.is_some() {
+                                uses_self = true;
+                            }
+                        }
+                        FnArg::Typed(pat) => {
+                            let mut pat = pat.clone();
+                            pat.attrs.clear(); // Remove attributes
+                            inputs_transformed.push(FnArg::Typed(pat));
+                        }
+                    }
+                }
+
+                let block = &func.block;
+
+                if uses_self {
+                    new_func_name = format_ident!("{}_{}_self_", struct_name, func_name);
+                }
+
+                transformed_methods.push(if uses_self {
+                    quote! {
+                        pub unsafe fn #func_name(&mut self) #block
+                    }
+                } else {
+                    quote! {
+                        pub unsafe fn #func_name() #block
                     }
                 });
 
-                let block = &func.block;
-                let new_block = quote! {
-                    {
-                        #block
-                        Ok(())
+                let inner_block = if uses_self {
+                    quote! {
+                        {
+                            let instance_id = crate::moss_definitions::functions::moss_pe_get_screen_value::<i64>("id")?.value;
+                            let instance = {
+                                let mut screen_manager = #screen_manager.lock().unwrap();
+                                screen_manager.get_mut(&instance_id).cloned()
+                            };
+
+                            if let Some(instance) = instance {
+                                instance.lock().unwrap().#func_name();
+                            } else {
+                                extism_pdk::error!("The instance could not be found!");
+                                panic!("The instance could not be found!");
+                            }
+                            Ok(())
+                        }
+                    }
+                } else {
+                    quote! {
+                        {
+                            #struct_name::#func_name();
+                            Ok(())
+                        }
                     }
                 };
 
                 transformed_methods.push(quote! {
                     #[extism_pdk::plugin_fn]
-                    pub unsafe fn #new_func_name(#(#inputs_transformed),*) -> extism_pdk::FnResult<()> #new_block
+                    pub unsafe fn #new_func_name(#(#inputs_transformed),*) -> extism_pdk::FnResult<()> #inner_block
                 });
 
                 match func_name.to_string().as_str() {
@@ -86,17 +131,20 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 screen_post_loop: #post_loop_function,
                 event_hook: #event_hook_function,
             }) {
-                panic!("Failed to register screen: {:?}", e);
+                extism_pdk::error!("Failed to register screen: {:?}", e);
+                panic!("{:?}", e);
             }
         }
-        pub unsafe fn open() {
-            crate::moss_definitions::functions::moss_pe_open_screen(#struct_name_str, ()).unwrap()
-        }
 
-        pub unsafe fn open_with_data(initial_data: Self) {
-            match crate::moss_definitions::functions::moss_pe_open_screen::<Self>(#struct_name_str, initial_data) {
-                Ok(_) => {},
-                Err(e) => panic!("Failed to open screen with data: {:?}", e),
+        pub unsafe fn open_with_data(instance: Self) {
+            match crate::moss_definitions::functions::moss_pe_open_screen(#struct_name_str, ()) {
+                Ok(instance_id) => {
+                    #screen_manager.lock().unwrap().insert(instance_id, std::sync::Arc::new(std::sync::Mutex::new(instance)));
+                },
+                Err(e) => {
+                    extism_pdk::error!("Failed to open screen with data: {:?}", e);
+                    panic!("{:?}", e);
+                },
             }
         }
     };
@@ -104,6 +152,9 @@ pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let struct_impl = &input.self_ty;
 
     let expanded = quote! {
+        // Global screen registry
+        static #screen_manager: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<i64, std::sync::Arc<std::sync::Mutex<#struct_name>>>>> = once_cell::sync::Lazy::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
         impl #struct_impl {
             #(#transformed_methods)*
             #open_methods

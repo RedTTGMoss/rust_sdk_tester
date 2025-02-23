@@ -37,7 +37,7 @@ extern "ExtismHost" {
     // Screens
     pub fn moss_pe_register_screen(screen: MossScreen);
     #[link_name = "moss_pe_open_screen"]
-    fn _moss_pe_open_screen(key: String, initial_values: Vec<u8>);
+    fn _moss_pe_open_screen(key: String, initial_values: Vec<u8>) -> i64;
     pub fn moss_pe_close_screen();
 
     pub fn moss_pe_get_screen_value<T: for<'de> Deserialize<'de>>(key: &str) -> ConfigGet<T>;
@@ -111,7 +111,7 @@ pub unsafe fn moss_pe_set_screen_value<T: Serialize>(key: &str, value: T) {
 pub unsafe fn moss_pe_open_screen<T: Serialize>(
     key: &str,
     initial_values: T,
-) -> Result<(), extism_pdk::Error> {
+) -> Result<i64, extism_pdk::Error> {
     let serialized_values = to_vec(&initial_values)?;
     _moss_pe_open_screen(key.into(), serialized_values)
 }
