@@ -1,5 +1,6 @@
 use crate::{
-    moss_api_collection_metadata_get_all, moss_api_document_metadata_get_all, moss_em_config_get,
+    moss_api_collection_metadata_get, moss_api_collection_metadata_get_all,
+    moss_api_document_metadata_get, moss_api_document_metadata_get_all, moss_em_config_get,
     moss_em_config_set, RM_Document, RM_DocumentCollection,
 };
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
@@ -39,6 +40,12 @@ pub unsafe fn run_fetch_test() {
 
     let mut document_metadata = moss_api_document_metadata_get_all(document_uuid.as_str()).unwrap();
     document_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
+    assert_eq!(
+        document_metadata.visible_name,
+        moss_api_document_metadata_get::<String>(document_uuid.as_str(), "visible_name")
+            .unwrap()
+            .value
+    );
 
     let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
     document_collection
@@ -48,6 +55,15 @@ pub unsafe fn run_fetch_test() {
     let mut collection_metadata =
         moss_api_collection_metadata_get_all(document_collection_uuid.as_str()).unwrap();
     collection_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
+    assert_eq!(
+        collection_metadata.visible_name,
+        moss_api_collection_metadata_get::<String>(
+            document_collection_uuid.as_str(),
+            "visible_name"
+        )
+        .unwrap()
+        .value
+    );
 }
 
 pub unsafe fn run_all_api_tests() {
