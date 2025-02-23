@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitInt, Visibility};
+use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitInt, LitStr, Visibility};
 
 #[proc_macro_attribute]
 pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -199,15 +199,43 @@ pub fn moss_color(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(MetadataAccessors)]
-pub fn metadata_accessors_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Accessors, attributes(accessor_type))]
+pub fn accessors_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
+
+    let accessor_type: String = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("accessor_type"))
+        .map(|attr| {
+            attr.parse_args::<LitStr>()
+                .expect("expected a string literal for accessor_type")
+                .value()
+        })
+        .unwrap_or_else(|| panic!("Missing required attribute: #[accessor_type(\"...\")]"));
 
     if let syn::Data::Struct(data_struct) = input.data {
         let mut getters_setters = Vec::new();
         let mut has_document_uuid = false;
-        let mut has_metadata_id = false;
+        let mut has_collection_uuid = false;
+        let mut has_accessor_id = false;
+        let accessor_id_field = format!("{}_id", accessor_type);
+
+        for field in data_struct.fields.iter() {
+            if let Some(field_ident) = &field.ident {
+                let field_name = field_ident.to_string();
+                if field_name == "document_uuid" {
+                    has_document_uuid = true
+                }
+                if field_name == "collection_uuid" {
+                    has_collection_uuid = true
+                }
+                if field_name == accessor_id_field {
+                    has_accessor_id = true
+                }
+            }
+        }
 
         for field in data_struct.fields.iter() {
             if let Some(field_ident) = &field.ident {
@@ -215,14 +243,12 @@ pub fn metadata_accessors_derive(input: TokenStream) -> TokenStream {
                 let field_name = field_ident.to_string();
                 let setter_ident = format_ident!("set_{}", field_ident);
 
-                if field_name == "document_uuid" {
-                    has_document_uuid = true;
-                    continue; // Skip generating accessors for document_uuid
-                }
-
-                if field_name == "metadata_id" {
-                    has_metadata_id = true;
-                    continue; // Skip generating accessors for metadata_id
+                // Skip generating accessors
+                if field_name == "document_uuid"
+                    || field_name == "collection_uuid"
+                    || field_name == accessor_id_field
+                {
+                    continue;
                 }
 
                 let getter = quote! {
@@ -230,48 +256,55 @@ pub fn metadata_accessors_derive(input: TokenStream) -> TokenStream {
                         &self.#field_ident
                     }
                 };
+                let document_set = format_ident!("moss_api_document_{}_set", accessor_type);
+                let collection_set = format_ident!("moss_api_collection_{}_set", accessor_type);
+                let accessor_set = format_ident!("moss_api_{}_set", accessor_type);
+                let accessor_id = format_ident!("{}_id", accessor_type);
+                let panic_collection = format!(
+                    "Neither document_uuid, collection_uuid or {}_id are set!",
+                    accessor_type
+                );
+                let panic_document =
+                    format!("Neither document_uuid nor {}_id is set!", accessor_type);
 
-                let setter = if field_ty == &syn::parse_str("String").unwrap()
-                    || field_ty == &syn::parse_str("Option<String>").unwrap()
-                {
+                let setters_block = if has_collection_uuid {
                     quote! {
-                        pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
-                            self.#field_ident = value.clone();
-                            if let Some(ref document_uuid) = self.document_uuid {
-                                crate::moss_definitions::functions::moss_api_document_metadata_set::<#field_ty>(document_uuid, #field_name, value);
-                            } else if let Some(ref collection_uuid) = self.collection_uuid {
-                                crate::moss_definitions::functions::moss_api_collection_metadata_set::<#field_ty>(collection_uuid, #field_name, value);
-                            } else if let Some(ref metadata_id) = self.metadata_id {
-                                crate::moss_definitions::functions::moss_api_metadata_set::<#field_ty>(metadata_id, #field_name, value);
-                            } else {
-                                panic!("Neither document_uuid nor metadata_id is set!");
-                            }
+                        if let Some(ref document_uuid) = self.document_uuid {
+                            crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
+                        } else if let Some(ref collection_uuid) = self.collection_uuid {
+                            crate::moss_definitions::functions::#collection_set::<#field_ty>(collection_uuid, #field_name, value);
+                        } else if let Some(ref #accessor_id) = self.#accessor_id {
+                            crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
+                        } else {
+                            panic!(#panic_collection);
                         }
                     }
                 } else {
                     quote! {
-                        pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
-                            self.#field_ident = value;
-                            if let Some(ref document_uuid) = self.document_uuid {
-                                crate::moss_definitions::functions::moss_api_document_metadata_set::<#field_ty>(document_uuid, #field_name, value);
-                            } else if let Some(ref metadata_id) = self.metadata_id {
-                                crate::moss_definitions::functions::moss_api_metadata_set::<#field_ty>(metadata_id, #field_name, value);
+                        if let Some(ref document_uuid) = self.document_uuid {
+                                crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
+                            } else if let Some(ref #accessor_id) = self.#accessor_id {
+                                crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
                             } else {
-                                panic!("Neither document_uuid nor metadata_id is set!");
+                                panic!(#panic_document);
                             }
-                        }
                     }
                 };
 
                 getters_setters.push(getter);
-                getters_setters.push(setter);
+                getters_setters.push(quote! {
+                    pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
+                        self.#field_ident = value.clone();
+                        #setters_block
+                    }
+                });
             }
         }
 
-        if !has_document_uuid || !has_metadata_id {
+        if !has_document_uuid || !has_accessor_id {
             return syn::Error::new_spanned(
                 struct_name,
-                "Struct must have both `document_uuid: Option<String>` and `metadata_id: Option<String>` fields.",
+                format!("Struct must have both `document_uuid: Option<String>` and `{}_id: Option<String>` fields.", accessor_type),
             )
                 .to_compile_error()
                 .into();

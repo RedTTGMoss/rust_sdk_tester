@@ -6,7 +6,7 @@ use crate::{
 };
 // use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use extism_pdk::{error, FromBytes, Json, ToBytes};
-use moss_macros::{moss_color, MetadataAccessors};
+use moss_macros::{moss_color, Accessors};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -445,7 +445,8 @@ pub struct RM_Zoom {
     pub customZoomScale: f64,
 }
 
-#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
+#[accessor_type("content")]
 #[encoding(Json)]
 pub struct RM_Content {
     pub hash: String,
@@ -459,11 +460,13 @@ pub struct RM_Content {
     pub tags: Vec<RM_Tag>,
     pub size_in_bytes: i64,
     pub dummy_document: bool,
+    // reference data
+    pub document_uuid: Option<String>,
+    pub content_id: Option<i64>,
 }
 
-#[derive(
-    FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, MetadataAccessors,
-)]
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
+#[accessor_type("metadata")]
 #[encoding(Json)]
 pub struct RM_Metadata {
     pub hash: String,
