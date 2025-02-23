@@ -30,22 +30,16 @@ pub unsafe fn run_fetch_test() {
     }
 
     let mut document = RM_Document::get(document_uuid.as_str());
-    moss_em_config_set::<bool>("test_api_document_get_full", true);
 
     document
         .metadata
         .set_visible_name("TEST SUCCEEDED!".to_string());
 
-    moss_em_config_set::<bool>("test_api_document_metadata_set", true);
-
     let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
-    moss_em_config_set::<bool>("test_api_collection_get_full", true);
 
     document_collection
         .metadata
         .set_visible_name("TEST SUCCEEDED!".to_string());
-
-    moss_em_config_set::<bool>("test_api_collection_metadata_set", true);
 }
 
 pub unsafe fn run_all_api_tests() {

@@ -12,37 +12,6 @@ use extism_pdk::*;
 #[plugin_fn]
 pub unsafe fn moss_extension_register(Json(_state): Json<MossState>) -> FnResult<ExtensionInfo> {
     moss_em_config_set::<bool>("initialized", false);
-    moss_em_config_set::<bool>("icon_loaded", false);
-    moss_em_config_set::<bool>("icon_inverted", false);
-    moss_em_config_set::<bool>("test_defaults_set<String>", false);
-    moss_em_config_set::<bool>("test_defaults_set<TestTypes>", false);
-    moss_em_config_set::<bool>("test_defaults_set_color_no_alpha", false);
-    moss_em_config_set::<bool>("test_defaults_set_color_with_alpha", false);
-    moss_em_config_set::<bool>("test_defaults_set_text_color_no_alpha_no_background", false);
-    moss_em_config_set::<bool>(
-        "test_defaults_set_text_color_no_alpha_with_background_no_alpha",
-        false,
-    );
-    moss_em_config_set::<bool>(
-        "test_defaults_set_text_color_no_alpha_with_background_with_alpha",
-        false,
-    );
-    moss_em_config_set::<bool>(
-        "test_defaults_set_text_color_with_alpha_no_background",
-        false,
-    );
-    moss_em_config_set::<bool>(
-        "test_defaults_set_text_color_with_alpha_with_background_no_alpha",
-        false,
-    );
-    moss_em_config_set::<bool>(
-        "test_defaults_set_text_color_with_alpha_with_background_with_alpha",
-        false,
-    );
-    moss_em_config_set::<bool>("test_api_document_get_full", false);
-    moss_em_config_set::<bool>("test_api_document_metadata_set", false);
-    moss_em_config_set::<bool>("test_api_collection_get_full", false);
-    moss_em_config_set::<bool>("test_api_collection_metadata_set", false);
     moss_em_config_set::<bool>("completed", false);
 
     run_all_defaults_tests();
