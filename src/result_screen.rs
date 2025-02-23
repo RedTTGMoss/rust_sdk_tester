@@ -2,13 +2,15 @@ use crate::moss_definitions;
 use crate::moss_definitions::functions::*;
 use crate::moss_definitions::types::*;
 use extism_pdk;
+use extism_pdk::{FromBytes, Json, ToBytes};
 use moss_macros::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize, ToBytes, FromBytes, PartialEq, Debug, Clone)]
+#[encoding(Json)]
 pub struct ResultScreen {
     background_color: Color,
     progress_color: Color,
@@ -19,40 +21,35 @@ pub struct ResultScreen {
 
 #[moss_screen]
 impl ResultScreen {
-    pub fn r#loop() {
-        let state = moss_em_get_state()?;
-        let background_color = moss_pe_get_screen_value::<Color>("background_color")?.value;
-        let progress_color = moss_pe_get_screen_value::<Color>("progress_color")?.value;
-        let title_text = moss_pe_get_screen_value::<TextRef>("title_text")?.value;
-        let timer = moss_pe_get_screen_value::<i64>("timer")?.value;
-        let mut progress_rect = moss_pe_get_screen_value::<Rect>("progress_rect")?.value;
+    pub fn r#loop(&mut self) {
+        let state = moss_em_get_state().unwrap();
         let (completed, total_functions, called_functions) = ResultScreen::check_function_calls();
 
         moss_pe_draw_rect(
-            &background_color,
+            &self.background_color,
             &Rect::new(0, 0, state.width as i64, state.height as i64),
             0,
             None,
         );
-        title_text.display();
+        self.title_text.display();
 
         let max_width = state.width as i64 - 60;
         let progress = called_functions as f64 / total_functions as f64;
 
-        progress_rect.width = (max_width as f64 * progress) as i64;
+        self.progress_rect.width = (max_width as f64 * progress) as i64;
 
         moss_pe_draw_rect(
-            &progress_color,
-            &progress_rect,
+            &self.progress_color,
+            &self.progress_rect,
             0,
             Some(PygameExtraRectEdgeRounding::all(10)),
         );
 
-        progress_rect.width = max_width;
+        self.progress_rect.width = max_width;
 
         moss_pe_draw_rect(
             &moss_color!(0xffffff),
-            &progress_rect,
+            &self.progress_rect,
             1,
             Some(PygameExtraRectEdgeRounding::all(10)),
         );
@@ -60,13 +57,13 @@ impl ResultScreen {
             moss_pe_set_screen_value::<String>("new_value", "test".to_string());
             moss_em_config_set::<bool>("completed", true);
             moss_em_config_set::<i64>("total_functions", 0);
-            moss_pe_close_screen()?;
-            ResultScreen::ResultScreen_open_action();
+            moss_pe_close_screen().unwrap();
+            ResultScreen::open_action();
         }
 
-        if get_rm_time_now() - timer > 5000 {
-            moss_em_export_statistical_data()?;
-            moss_pe_close_screen()?;
+        if get_rm_time_now() - self.timer > 5000 {
+            moss_em_export_statistical_data().unwrap();
+            moss_pe_close_screen().unwrap();
         }
     }
 
@@ -97,8 +94,8 @@ impl ResultScreen {
     }
 
     pub fn open_action() {
-        let font = moss_defaults_get::<String>("TITLE_FONT")?.value;
-        let font2 = moss_defaults_get::<String>("LOGO_FONT")?.value;
+        let font = moss_defaults_get::<String>("TITLE_FONT").unwrap().value;
+        let font2 = moss_defaults_get::<String>("LOGO_FONT").unwrap().value;
         let title_text = TextRef::create_white("Rust SDK tester", font.as_str(), 24);
         let mut screen = ResultScreen {
             background_color: moss_color!(0x000000),
