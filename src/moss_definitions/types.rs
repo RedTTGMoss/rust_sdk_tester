@@ -1,14 +1,57 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all, moss_text_display,
-    moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text,
+    get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all,
+    moss_api_document_new_epub, moss_api_document_new_notebook, moss_api_document_new_pdf,
+    moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect,
+    moss_text_set_text,
 };
-// use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use derive_builder::Builder;
 use extism_pdk::{error, FromBytes, Json, ToBytes};
 use moss_macros::{moss_color, Accessors};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[builder(pattern = "owned")]
+#[encoding(Json)]
+pub struct DocumentNewNotebook {
+    name: String,
+    #[builder(default)]
+    parent: Option<String>,
+    #[builder(default)]
+    document_uuid: Option<String>,
+    #[builder(default = "1")]
+    page_count: i64,
+    #[builder(default = "Vec::new()")]
+    notebook_data: Vec<String>,
+    #[builder(default)]
+    metadata_id: Option<String>,
+    #[builder(default)]
+    content_id: Option<String>,
+}
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[builder(pattern = "owned")]
+#[encoding(Json)]
+pub struct DocumentNewPDF {
+    name: String,
+    pdf_data: String,
+    #[builder(default)]
+    parent: Option<String>,
+    #[builder(default)]
+    document_uuid: Option<String>,
+}
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[builder(pattern = "owned")]
+#[encoding(Json)]
+pub struct DocumentNewEPUB {
+    name: String,
+    epub_data: String,
+    #[builder(default)]
+    parent: Option<String>,
+    #[builder(default)]
+    document_uuid: Option<String>,
+}
 
 #[derive(ToBytes, FromBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
 #[encoding(Json)]
@@ -338,11 +381,11 @@ impl RM_File {
 #[encoding(Json)]
 pub struct RM_TimestampedValue<T> {
     pub timestamp: String,
-    pub value: T,
+    pub value: Option<T>,
 }
 
 impl<T> RM_TimestampedValue<T> {
-    pub fn new(timestamp: &str, value: T) -> Self {
+    pub fn new(timestamp: &str, value: Option<T>) -> Self {
         Self {
             timestamp: timestamp.to_string(),
             value,
@@ -354,30 +397,30 @@ impl<T> RM_TimestampedValue<T> {
 #[encoding(Json)]
 pub struct RM_TimestampedDate {
     timestamp: String,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 impl RM_TimestampedDate {
     pub fn new(timestamp: &str, value: &str) -> Self {
         Self {
             timestamp: timestamp.to_string(),
-            value: value.to_string(),
+            value: Some(value.to_string()),
         }
     }
 
-    // pub fn get_timestamp(&self) -> i64 {
-    //     let datetime: DateTime<Utc> = self.timestamp.parse().expect("Invalid timestamp");
-    //     datetime.timestamp()
-    // }
-    //
-    // pub fn set_timestamp(&mut self, timestamp: i64) {
-    //     let datetime_back = Utc
-    //         .timestamp_opt(timestamp, 0)
-    //         .single()
-    //         .expect("Invalid timestamp");
-    //     let iso_string = datetime_back.to_rfc3339_opts(SecondsFormat::Secs, true);
-    //     self.timestamp = iso_string;
-    // }
+    pub fn get_timestamp(&self) -> i64 {
+        let datetime: DateTime<Utc> = self.timestamp.parse().expect("Invalid timestamp");
+        datetime.timestamp()
+    }
+
+    pub fn set_timestamp(&mut self, timestamp: i64) {
+        let datetime_back = Utc
+            .timestamp_opt(timestamp, 0)
+            .single()
+            .expect("Invalid timestamp");
+        let iso_string = datetime_back.to_rfc3339_opts(SecondsFormat::Secs, true);
+        self.value = Some(iso_string);
+    }
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
@@ -520,13 +563,11 @@ pub struct RM_Document {
     #[accessor(exclude)]
     pub files: Vec<RM_File>,
     #[accessor(exclude)]
-    pub content_data: HashMap<String, Vec<u8>>,
-    #[accessor(exclude)]
     pub content: RM_Content,
     #[accessor(exclude)]
     pub metadata: RM_Metadata,
     pub uuid: String,
-    pub server_hash: String,
+    pub server_hash: Option<String>,
     #[accessor(exclude)]
     pub files_available: Vec<String>,
     pub downloading: bool,
@@ -542,6 +583,46 @@ impl RM_Document {
             Err(e) => {
                 error!("Error retrieving document: {:?}", e);
                 panic!("Failed to retrieve document");
+            }
+        }
+    }
+
+    pub unsafe fn new_notebook(
+        builder: DocumentNewNotebookBuilder,
+    ) -> Result<Self, DocumentNewNotebookBuilderError> {
+        let notebook = builder.build()?;
+
+        match moss_api_document_new_notebook(notebook) {
+            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Err(e) => {
+                error!("Error creating new notebook: {:?}", e);
+                panic!("Failed to create new notebook");
+            }
+        }
+    }
+    pub unsafe fn new_pdf(
+        builder: DocumentNewPDFBuilder,
+    ) -> Result<Self, DocumentNewPDFBuilderError> {
+        let pdf = builder.build()?;
+
+        match moss_api_document_new_pdf(pdf) {
+            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Err(e) => {
+                error!("Error creating new pdf: {:?}", e);
+                panic!("Failed to create new pdf");
+            }
+        }
+    }
+    pub unsafe fn new_epub(
+        builder: DocumentNewEPUBBuilder,
+    ) -> Result<Self, DocumentNewEPUBBuilderError> {
+        let epub = builder.build()?;
+
+        match moss_api_document_new_epub(epub) {
+            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Err(e) => {
+                error!("Error creating new pdf: {:?}", e);
+                panic!("Failed to create new pdf");
             }
         }
     }

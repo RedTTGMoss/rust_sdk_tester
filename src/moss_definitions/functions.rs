@@ -97,6 +97,11 @@ extern "ExtismHost" {
     #[link_name = "moss_api_content_set"]
     pub fn _moss_api_content_set<T: Serialize>(content_id: &i64, value: ConfigSet<T>);
     pub fn moss_api_content_get_all(content_id: &str) -> RM_Content;
+
+    // Document host functions
+    pub fn moss_api_document_new_notebook(value: DocumentNewNotebook) -> String;
+    pub fn moss_api_document_new_pdf(value: DocumentNewPDF) -> String;
+    pub fn moss_api_document_new_epub(value: DocumentNewEPUB) -> String;
 }
 
 pub unsafe fn moss_em_config_set<T: Serialize>(key: &str, value: T) {
