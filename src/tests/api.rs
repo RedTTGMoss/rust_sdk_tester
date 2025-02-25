@@ -1,9 +1,12 @@
 use crate::{
     moss_api_collection_metadata_get_all, moss_api_document_content_get_all,
-    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set, RM_Document,
-    RM_DocumentCollection,
+    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set,
+    DocumentNewEPUBBuilder, DocumentNewEPUBBuilderError, DocumentNewNotebookBuilder,
+    DocumentNewNotebookBuilderError, DocumentNewPDFBuilder, DocumentNewPDFBuilderError,
+    RM_Document, RM_DocumentCollection,
 };
 use extism_pdk::error;
+
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
 const DOCUMENT_COLLECTION_UUID_ERROR: &str =
@@ -98,6 +101,67 @@ pub unsafe fn run_fetch_test() -> Option<String> {
     api_test_folder
 }
 
+pub unsafe fn run_new_notebook_test(
+    api_test_folder: Option<String>,
+) -> Result<(), DocumentNewNotebookBuilderError> {
+    match RM_Document::new_notebook(
+        DocumentNewNotebookBuilder::default()
+            .name("Test Notebook".to_string())
+            .parent(api_test_folder),
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+pub unsafe fn run_new_pdf_test(
+    api_test_folder: Option<String>,
+) -> Result<(), DocumentNewPDFBuilderError> {
+    match RM_Document::new_pdf(
+        DocumentNewPDFBuilder::default()
+            .name("Test PDF".to_string())
+            .pdf_data("extension/assets/test_pdf.pdf".to_string())
+            .parent(api_test_folder),
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+pub unsafe fn run_new_epub_test(
+    api_test_folder: Option<String>,
+) -> Result<(), DocumentNewEPUBBuilderError> {
+    match RM_Document::new_epub(
+        DocumentNewEPUBBuilder::default()
+            .name("Test EPUB".to_string())
+            .epub_data("extension/assets/test_epub.epub".to_string())
+            .parent(api_test_folder),
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+pub unsafe fn run_new_documents_test(api_test_folder: Option<String>) {
+    match run_new_notebook_test(api_test_folder.clone()) {
+        Err(e) => {
+            error!("Document new notebook failed: {}", e);
+        }
+        _ => {}
+    }
+    match run_new_pdf_test(api_test_folder.clone()) {
+        Err(e) => {
+            error!("Document new PDF failed: {}", e);
+        }
+        _ => {}
+    }
+    match run_new_epub_test(api_test_folder.clone()) {
+        Err(e) => {
+            error!("Document new EPUB failed: {}", e);
+        }
+        _ => {}
+    }
+}
+
 pub unsafe fn run_all_api_tests() {
     let api_test_folder = run_fetch_test();
+    run_new_documents_test(api_test_folder);
 }
