@@ -450,6 +450,7 @@ pub struct RM_Zoom {
 #[encoding(Json)]
 pub struct RM_Content {
     pub hash: String,
+    #[accessor(exclude)]
     pub c_pages: RM_CPages,
     pub cover_page_number: i64,
     pub file_type: String,
@@ -487,10 +488,13 @@ pub struct RM_Metadata {
     pub metadata_id: Option<i64>,
 }
 
-#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
+#[accessor_type("collection")]
+#[accessor_uuid(true)]
 #[encoding(Json)]
 pub struct RM_DocumentCollection {
     pub tags: Vec<RM_Tag>,
+    #[accessor(exclude)]
     pub metadata: RM_Metadata,
     pub uuid: String,
     pub has_items: bool,
@@ -508,18 +512,26 @@ impl RM_DocumentCollection {
     }
 }
 
-#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone)]
+#[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
+#[accessor_type("document")]
+#[accessor_uuid(true)]
 #[encoding(Json)]
 pub struct RM_Document {
+    #[accessor(exclude)]
     pub files: Vec<RM_File>,
+    #[accessor(exclude)]
     pub content_data: HashMap<String, Vec<u8>>,
+    #[accessor(exclude)]
     pub content: RM_Content,
+    #[accessor(exclude)]
     pub metadata: RM_Metadata,
     pub uuid: String,
     pub server_hash: String,
+    #[accessor(exclude)]
     pub files_available: Vec<String>,
     pub downloading: bool,
     pub provision: bool,
+    #[accessor(exclude)]
     pub available: bool,
 }
 

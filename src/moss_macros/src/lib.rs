@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitInt, LitStr, Visibility};
+use syn::{parse_macro_input, DeriveInput, FnArg, ItemImpl, LitBool, LitInt, LitStr, Visibility};
 
 #[proc_macro_attribute]
 pub fn moss_screen(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -199,7 +199,7 @@ pub fn moss_color(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(Accessors, attributes(accessor_type))]
+#[proc_macro_derive(Accessors, attributes(accessor_type, accessor_uuid, accessor))]
 pub fn accessors_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
@@ -214,12 +214,23 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                 .value()
         })
         .unwrap_or_else(|| panic!("Missing required attribute: #[accessor_type(\"...\")]"));
+    let accessor_uuid: bool = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("accessor_uuid"))
+        .map(|attr| {
+            attr.parse_args::<LitBool>()
+                .expect("expected a bool for accessor_uuid")
+                .value()
+        })
+        .unwrap_or(false);
 
     if let syn::Data::Struct(data_struct) = input.data {
         let mut getters_setters = Vec::new();
         let mut has_document_uuid = false;
         let mut has_collection_uuid = false;
         let mut has_accessor_id = false;
+        let mut has_uuid = false;
         let accessor_id_field = format!("{}_id", accessor_type);
 
         for field in data_struct.fields.iter() {
@@ -231,10 +242,22 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                 if field_name == "collection_uuid" {
                     has_collection_uuid = true
                 }
+                if field_name == "uuid" {
+                    has_uuid = true
+                }
                 if field_name == accessor_id_field {
                     has_accessor_id = true
                 }
             }
+        }
+
+        if accessor_uuid && !has_uuid {
+            return syn::Error::new_spanned(
+                struct_name,
+                "Struct must have a `uuid: String` field when using #[accessor_uuid(true)]",
+            )
+            .to_compile_error()
+            .into();
         }
 
         for field in data_struct.fields.iter() {
@@ -242,6 +265,18 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                 let field_ty = &field.ty;
                 let field_name = field_ident.to_string();
                 let setter_ident = format_ident!("set_{}", field_ident);
+
+                if field.attrs.iter().any(|attr| {
+                    attr.path().is_ident("accessor")
+                        && attr
+                            .meta
+                            .require_list()
+                            .ok()
+                            .and_then(|list| list.parse_args::<syn::Ident>().ok())
+                            .map_or(false, |ident| ident == "exclude")
+                }) {
+                    continue;
+                }
 
                 // Skip generating accessors
                 if field_name == "document_uuid"
@@ -256,6 +291,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                         &self.#field_ident
                     }
                 };
+                let uuid_set = format_ident!("moss_api_{}_set", accessor_type);
                 let document_set = format_ident!("moss_api_document_{}_set", accessor_type);
                 let collection_set = format_ident!("moss_api_collection_{}_set", accessor_type);
                 let accessor_set = format_ident!("moss_api_{}_set", accessor_type);
@@ -267,27 +303,33 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                 let panic_document =
                     format!("Neither document_uuid nor {}_id is set!", accessor_type);
 
-                let setters_block = if has_collection_uuid {
+                let setters_block = if accessor_uuid {
                     quote! {
-                        if let Some(ref document_uuid) = self.document_uuid {
-                            crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
-                        } else if let Some(ref collection_uuid) = self.collection_uuid {
-                            crate::moss_definitions::functions::#collection_set::<#field_ty>(collection_uuid, #field_name, value);
-                        } else if let Some(ref #accessor_id) = self.#accessor_id {
-                            crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
-                        } else {
-                            panic!(#panic_collection);
-                        }
+                        crate::moss_definitions::functions::#uuid_set::<#field_ty>(self.uuid.clone(), #field_name, value);
                     }
                 } else {
-                    quote! {
-                        if let Some(ref document_uuid) = self.document_uuid {
+                    if has_collection_uuid {
+                        quote! {
+                            if let Some(ref document_uuid) = self.document_uuid {
                                 crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
+                            } else if let Some(ref collection_uuid) = self.collection_uuid {
+                                crate::moss_definitions::functions::#collection_set::<#field_ty>(collection_uuid, #field_name, value);
                             } else if let Some(ref #accessor_id) = self.#accessor_id {
                                 crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
                             } else {
-                                panic!(#panic_document);
+                                panic!(#panic_collection);
                             }
+                        }
+                    } else {
+                        quote! {
+                            if let Some(ref document_uuid) = self.document_uuid {
+                                    crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
+                                } else if let Some(ref #accessor_id) = self.#accessor_id {
+                                    crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
+                                } else {
+                                    panic!(#panic_document);
+                                }
+                        }
                     }
                 };
 
@@ -301,7 +343,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
             }
         }
 
-        if !has_document_uuid || !has_accessor_id {
+        if !has_uuid && (!has_document_uuid || !has_accessor_id) {
             return syn::Error::new_spanned(
                 struct_name,
                 format!("Struct must have both `document_uuid: Option<String>` and `{}_id: Option<String>` fields.", accessor_type),
