@@ -265,6 +265,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                 let field_ty = &field.ty;
                 let field_name = field_ident.to_string();
                 let setter_ident = format_ident!("set_{}", field_ident);
+                let getter_ident = format_ident!("get_{}", field_ident);
 
                 if field.attrs.iter().any(|attr| {
                     attr.path().is_ident("accessor")
@@ -286,15 +287,14 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                     continue;
                 }
 
-                let getter = quote! {
-                    pub unsafe fn #field_ident(&self) -> &#field_ty {
-                        &self.#field_ident
-                    }
-                };
                 let uuid_set = format_ident!("moss_api_{}_set", accessor_type);
                 let document_set = format_ident!("moss_api_document_{}_set", accessor_type);
                 let collection_set = format_ident!("moss_api_collection_{}_set", accessor_type);
                 let accessor_set = format_ident!("moss_api_{}_set", accessor_type);
+                let uuid_get = format_ident!("moss_api_{}_get", accessor_type);
+                let document_get = format_ident!("moss_api_document_{}_get", accessor_type);
+                let collection_get = format_ident!("moss_api_collection_{}_get", accessor_type);
+                let accessor_get = format_ident!("moss_api_{}_get", accessor_type);
                 let accessor_id = format_ident!("{}_id", accessor_type);
                 let panic_collection = format!(
                     "Neither document_uuid, collection_uuid or {}_id are set!",
@@ -305,7 +305,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
 
                 let setters_block = if accessor_uuid {
                     quote! {
-                        crate::moss_definitions::functions::#uuid_set::<#field_ty>(self.uuid.clone(), #field_name, value);
+                        crate::moss_definitions::functions::#uuid_set::<#field_ty>(self.uuid.clone().as_str(), #field_name, value);
                     }
                 } else {
                     if has_collection_uuid {
@@ -333,7 +333,48 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                getters_setters.push(getter);
+                let getters_block = if accessor_uuid {
+                    quote! {
+                        return crate::moss_definitions::functions::#uuid_get::<#field_ty>(self.uuid.clone().as_str(), #field_name);
+                    }
+                } else {
+                    if has_collection_uuid {
+                        quote! {
+                            return if let Some(ref document_uuid) = self.document_uuid {
+                                crate::moss_definitions::functions::#document_get::<#field_ty>(document_uuid, #field_name)
+                            } else if let Some(ref collection_uuid) = self.collection_uuid {
+                                crate::moss_definitions::functions::#collection_get::<#field_ty>(collection_uuid, #field_name)
+                            } else if let Some(ref #accessor_id) = self.#accessor_id {
+                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(#accessor_id, #field_name)
+                            } else {
+                                Err(extism_pdk::Error::msg(#panic_collection))
+                            }
+                        }
+                    } else {
+                        quote! {
+                            return if let Some(ref document_uuid) = self.document_uuid {
+                                crate::moss_definitions::functions::#document_get::<#field_ty>(document_uuid, #field_name)
+                            } else if let Some(ref #accessor_id) = self.#accessor_id {
+                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(#accessor_id, #field_name)
+                            } else {
+                                Err(extism_pdk::Error::msg(#panic_document))
+                            }
+                        }
+                    }
+                };
+
+                getters_setters.push(quote! {
+                    pub unsafe fn #getter_ident(&self) -> Result<crate::moss_definitions::types::ConfigGet<#field_ty>, extism_pdk::Error> {
+                        #getters_block
+                    }
+                    pub unsafe fn #field_ident(&mut self) -> #field_ty {
+                        match self.#getter_ident() {
+                            Ok(value) => self.#field_ident = value.value,
+                            Err(e) => extism_pdk::error!("Failed to get {}: {:?}", #field_name, e)
+                        }
+                        return self.#field_ident.clone()
+                    }
+                });
                 getters_setters.push(quote! {
                     pub unsafe fn #setter_ident(&mut self, value: #field_ty) {
                         self.#field_ident = value.clone();
