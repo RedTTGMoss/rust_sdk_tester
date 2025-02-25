@@ -46,7 +46,7 @@ pub unsafe fn run_existing_document_test() -> Result<(), &'static str> {
     Ok(())
 }
 
-pub unsafe fn run_existing_collection_test() -> Result<(), &'static str> {
+pub unsafe fn run_existing_collection_test() -> Result<Option<String>, &'static str> {
     let document_collection_uuid;
     let _document_collection_uuid = moss_em_config_get::<String>(DOCUMENT_COLLECTION_UUID_KEY);
     if _document_collection_uuid.is_err() {
@@ -76,10 +76,11 @@ pub unsafe fn run_existing_collection_test() -> Result<(), &'static str> {
         collection_metadata.visible_name.clone(),
         collection_metadata.get_visible_name().unwrap().value
     );
-    Ok(())
+    Ok(document_collection.metadata.parent)
 }
 
-pub unsafe fn run_fetch_test() {
+pub unsafe fn run_fetch_test() -> Option<String> {
+    let mut api_test_folder = None;
     match run_existing_document_test() {
         Err(e) => {
             error!("Document test failed: {}", e);
@@ -87,13 +88,16 @@ pub unsafe fn run_fetch_test() {
         _ => {}
     }
     match run_existing_collection_test() {
+        Ok(parent) => {
+            api_test_folder = parent;
+        }
         Err(e) => {
             error!("Collection test failed: {}", e);
         }
-        _ => {}
     }
+    api_test_folder
 }
 
 pub unsafe fn run_all_api_tests() {
-    run_fetch_test();
+    let api_test_folder = run_fetch_test();
 }
