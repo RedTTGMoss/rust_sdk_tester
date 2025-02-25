@@ -3,33 +3,23 @@ use crate::{
     moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set, RM_Document,
     RM_DocumentCollection,
 };
+use extism_pdk::error;
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
 const DOCUMENT_COLLECTION_UUID_ERROR: &str =
     "Test document collection not found, please check config";
 const DOCUMENT_COLLECTION_UUID_KEY: &str = "test_document_collection_uuid";
 
-pub unsafe fn run_fetch_test() {
+pub unsafe fn run_existing_document_test() -> Result<(), &'static str> {
     let document_uuid;
     let _document_uuid = moss_em_config_get::<String>(DOCUMENT_UUID_KEY);
     if _document_uuid.is_err() {
         moss_em_config_set::<String>(DOCUMENT_UUID_KEY, "".to_string());
-        panic!("{}", DOCUMENT_UUID_ERROR);
+        return Err(DOCUMENT_UUID_ERROR);
     } else {
         document_uuid = _document_uuid.unwrap().value;
         if document_uuid.is_empty() {
-            panic!("{}", DOCUMENT_UUID_ERROR);
-        }
-    }
-    let document_collection_uuid;
-    let _document_collection_uuid = moss_em_config_get::<String>(DOCUMENT_COLLECTION_UUID_KEY);
-    if _document_collection_uuid.is_err() {
-        moss_em_config_set::<String>(DOCUMENT_COLLECTION_UUID_KEY, "".to_string());
-        panic!("{}", DOCUMENT_COLLECTION_UUID_ERROR);
-    } else {
-        document_collection_uuid = _document_collection_uuid.unwrap().value;
-        if document_collection_uuid.is_empty() {
-            panic!("{}", DOCUMENT_COLLECTION_UUID_ERROR);
+            return Err(DOCUMENT_UUID_ERROR);
         }
     }
 
@@ -53,6 +43,21 @@ pub unsafe fn run_fetch_test() {
         document_content.usable,
         document_content.get_usable().unwrap().value
     );
+    Ok(())
+}
+
+pub unsafe fn run_existing_collection_test() -> Result<(), &'static str> {
+    let document_collection_uuid;
+    let _document_collection_uuid = moss_em_config_get::<String>(DOCUMENT_COLLECTION_UUID_KEY);
+    if _document_collection_uuid.is_err() {
+        moss_em_config_set::<String>(DOCUMENT_COLLECTION_UUID_KEY, "".to_string());
+        return Err(DOCUMENT_COLLECTION_UUID_ERROR);
+    } else {
+        document_collection_uuid = _document_collection_uuid.unwrap().value;
+        if document_collection_uuid.is_empty() {
+            return Err(DOCUMENT_COLLECTION_UUID_ERROR);
+        }
+    }
 
     let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
     document_collection
@@ -71,6 +76,22 @@ pub unsafe fn run_fetch_test() {
         collection_metadata.visible_name.clone(),
         collection_metadata.get_visible_name().unwrap().value
     );
+    Ok(())
+}
+
+pub unsafe fn run_fetch_test() {
+    match run_existing_document_test() {
+        Err(e) => {
+            error!("Document test failed: {}", e);
+        }
+        _ => {}
+    }
+    match run_existing_collection_test() {
+        Err(e) => {
+            error!("Collection test failed: {}", e);
+        }
+        _ => {}
+    }
 }
 
 pub unsafe fn run_all_api_tests() {
