@@ -1,8 +1,7 @@
 use crate::{
-    moss_api_collection_metadata_get, moss_api_collection_metadata_get_all,
-    moss_api_document_content_get, moss_api_document_content_get_all,
-    moss_api_document_metadata_get, moss_api_document_metadata_get_all, moss_em_config_get,
-    moss_em_config_set, RM_Document, RM_DocumentCollection,
+    moss_api_collection_metadata_get_all, moss_api_document_content_get_all,
+    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set, RM_Document,
+    RM_DocumentCollection,
 };
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
@@ -40,6 +39,7 @@ pub unsafe fn run_fetch_test() {
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
     document.content.set_usable(true);
     document.set_provision(true);
+    assert_eq!(document.provision, document.get_provision().unwrap().value);
 
     let mut document_metadata = moss_api_document_metadata_get_all(document_uuid.as_str()).unwrap();
     let mut document_content = moss_api_document_content_get_all(document_uuid.as_str()).unwrap();
@@ -47,15 +47,11 @@ pub unsafe fn run_fetch_test() {
     document_content.set_usable(false);
     assert_eq!(
         document_metadata.visible_name,
-        moss_api_document_metadata_get::<String>(document_uuid.as_str(), "visible_name")
-            .unwrap()
-            .value
+        document_metadata.get_visible_name().unwrap().value
     );
     assert_eq!(
         document_content.usable,
-        moss_api_document_content_get::<bool>(document_uuid.as_str(), "usable")
-            .unwrap()
-            .value
+        document_content.get_usable().unwrap().value
     );
 
     let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
@@ -63,18 +59,17 @@ pub unsafe fn run_fetch_test() {
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
     document_collection.set_has_items(true);
+    assert_eq!(
+        document_collection.has_items,
+        document_collection.get_has_items().unwrap().value
+    );
 
     let mut collection_metadata =
         moss_api_collection_metadata_get_all(document_collection_uuid.as_str()).unwrap();
     collection_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
     assert_eq!(
-        collection_metadata.visible_name,
-        moss_api_collection_metadata_get::<String>(
-            document_collection_uuid.as_str(),
-            "visible_name"
-        )
-        .unwrap()
-        .value
+        collection_metadata.visible_name.clone(),
+        collection_metadata.get_visible_name().unwrap().value
     );
 }
 
