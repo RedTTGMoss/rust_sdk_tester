@@ -39,6 +39,7 @@ pub unsafe fn run_fetch_test() {
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
     document.content.set_usable(true);
+    document.set_provision(true);
 
     let mut document_metadata = moss_api_document_metadata_get_all(document_uuid.as_str()).unwrap();
     let mut document_content = moss_api_document_content_get_all(document_uuid.as_str()).unwrap();
@@ -61,6 +62,7 @@ pub unsafe fn run_fetch_test() {
     document_collection
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
+    document_collection.set_has_items(true);
 
     let mut collection_metadata =
         moss_api_collection_metadata_get_all(document_collection_uuid.as_str()).unwrap();
