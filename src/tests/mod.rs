@@ -15,5 +15,6 @@ mod colors;
 pub unsafe fn run_all_tests(state: &MossState) {
     run_all_gui_tests(state);
     run_all_api_tests();
+    open_context_menu(None, None);
     ResultScreen::ResultScreen_open_action();
 }

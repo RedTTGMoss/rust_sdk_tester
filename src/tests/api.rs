@@ -1,11 +1,10 @@
 use crate::{
     moss_api_collection_metadata_get_all, moss_api_document_content_get_all,
     moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set,
-    DocumentNewEPUBBuilder, DocumentNewEPUBBuilderError, DocumentNewNotebookBuilder,
-    DocumentNewNotebookBuilderError, DocumentNewPDFBuilder, DocumentNewPDFBuilderError,
-    RM_Document, RM_DocumentCollection,
+    DocumentNewEPUBBuilder, DocumentNewNotebookBuilder, DocumentNewPDFBuilder, RM_Document,
+    RM_DocumentCollection,
 };
-use extism_pdk::error;
+use extism_pdk::{error, plugin_fn, Error, FnResult};
 
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
@@ -13,20 +12,21 @@ const DOCUMENT_COLLECTION_UUID_ERROR: &str =
     "Test document collection not found, please check config";
 const DOCUMENT_COLLECTION_UUID_KEY: &str = "test_document_collection_uuid";
 
-pub unsafe fn run_existing_document_test() -> Result<(), &'static str> {
+pub unsafe fn run_existing_document_test() -> Result<RM_Document, String> {
     let document_uuid;
     let _document_uuid = moss_em_config_get::<String>(DOCUMENT_UUID_KEY);
     if _document_uuid.is_err() {
         moss_em_config_set::<String>(DOCUMENT_UUID_KEY, "".to_string());
-        return Err(DOCUMENT_UUID_ERROR);
+        return Err(DOCUMENT_UUID_ERROR.to_string());
     } else {
         document_uuid = _document_uuid.unwrap().value;
         if document_uuid.is_empty() {
-            return Err(DOCUMENT_UUID_ERROR);
+            return Err(DOCUMENT_UUID_ERROR.to_string());
         }
     }
 
-    let mut document = RM_Document::get(document_uuid.as_str());
+    let mut document = RM_Document::get(document_uuid.as_str())
+        .map_err(|e| format!("Error retrieving document collection: {:?}", e))?;
     document
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
@@ -46,23 +46,24 @@ pub unsafe fn run_existing_document_test() -> Result<(), &'static str> {
         document_content.usable,
         document_content.get_usable().unwrap().value
     );
-    Ok(())
+    Ok(document)
 }
 
-pub unsafe fn run_existing_collection_test() -> Result<Option<String>, &'static str> {
+pub unsafe fn run_existing_collection_test() -> Result<Option<String>, String> {
     let document_collection_uuid;
     let _document_collection_uuid = moss_em_config_get::<String>(DOCUMENT_COLLECTION_UUID_KEY);
     if _document_collection_uuid.is_err() {
         moss_em_config_set::<String>(DOCUMENT_COLLECTION_UUID_KEY, "".to_string());
-        return Err(DOCUMENT_COLLECTION_UUID_ERROR);
+        return Err(DOCUMENT_COLLECTION_UUID_ERROR.to_string());
     } else {
         document_collection_uuid = _document_collection_uuid.unwrap().value;
         if document_collection_uuid.is_empty() {
-            return Err(DOCUMENT_COLLECTION_UUID_ERROR);
+            return Err(DOCUMENT_COLLECTION_UUID_ERROR.to_string());
         }
     }
 
-    let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str());
+    let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str())
+        .map_err(|e| format!("Error retrieving document collection: {:?}", e))?;
     document_collection
         .metadata
         .set_visible_name("TEST SUCCEEDED 1!".to_string());
@@ -82,13 +83,17 @@ pub unsafe fn run_existing_collection_test() -> Result<Option<String>, &'static 
     Ok(document_collection.metadata.parent)
 }
 
-pub unsafe fn run_fetch_test() -> Option<String> {
+pub unsafe fn run_fetch_test() -> (Option<RM_Document>, Option<String>) {
+    let mut test_document = None;
     let mut api_test_folder = None;
+
     match run_existing_document_test() {
+        Ok(document) => {
+            test_document = Some(document);
+        }
         Err(e) => {
             error!("Document test failed: {}", e);
         }
-        _ => {}
     }
     match run_existing_collection_test() {
         Ok(parent) => {
@@ -98,12 +103,10 @@ pub unsafe fn run_fetch_test() -> Option<String> {
             error!("Collection test failed: {}", e);
         }
     }
-    api_test_folder
+    (test_document, api_test_folder)
 }
 
-pub unsafe fn run_new_notebook_test(
-    api_test_folder: Option<String>,
-) -> Result<(), DocumentNewNotebookBuilderError> {
+pub unsafe fn run_new_notebook_test(api_test_folder: Option<String>) -> Result<(), Error> {
     match RM_Document::new_notebook(
         DocumentNewNotebookBuilder::default()
             .name("Test Notebook".to_string())
@@ -113,9 +116,7 @@ pub unsafe fn run_new_notebook_test(
         Err(e) => Err(e),
     }
 }
-pub unsafe fn run_new_pdf_test(
-    api_test_folder: Option<String>,
-) -> Result<(), DocumentNewPDFBuilderError> {
+pub unsafe fn run_new_pdf_test(api_test_folder: Option<String>) -> Result<(), Error> {
     match RM_Document::new_pdf(
         DocumentNewPDFBuilder::default()
             .name("Test PDF".to_string())
@@ -126,9 +127,7 @@ pub unsafe fn run_new_pdf_test(
         Err(e) => Err(e),
     }
 }
-pub unsafe fn run_new_epub_test(
-    api_test_folder: Option<String>,
-) -> Result<(), DocumentNewEPUBBuilderError> {
+pub unsafe fn run_new_epub_test(api_test_folder: Option<String>) -> Result<(), Error> {
     match RM_Document::new_epub(
         DocumentNewEPUBBuilder::default()
             .name("Test EPUB".to_string())
@@ -161,7 +160,54 @@ pub unsafe fn run_new_documents_test(api_test_folder: Option<String>) {
     }
 }
 
+pub unsafe fn _test_document_functions(document_uuid: String) -> FnResult<()> {
+    let document = RM_Document::get(document_uuid.as_str())?;
+    document.unload_files();
+    document.ensure_download();
+    document.unload_files();
+    document.load_files_from_cache();
+    document.unload_files();
+    match document.duplicate() {
+        Ok(mut duplicate) => {
+            duplicate
+                .metadata
+                .set_visible_name("TEST SUCCEEDED DUPLICATE!".to_string());
+        }
+        Err(e) => {
+            error!("Document duplicate failed: {}", e);
+        }
+    };
+
+    match document.randomize_uuids() {
+        Ok(mut modified_document) => {
+            modified_document.export();
+            modified_document
+                .metadata
+                .set_visible_name("TEST SUCCEEDED 3!".to_string());
+        }
+        Err(e) => {
+            error!("Document randomize uuids failed: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+#[plugin_fn]
+pub unsafe fn test_download_callback(document_uuid: String) -> FnResult<()> {
+    let result = _test_document_functions(document_uuid);
+    moss_em_config_set::<bool>("download_callback_called", true);
+    result
+}
+
+pub unsafe fn run_download_callback_test(document: RM_Document) {
+    document.ensure_download_and_callback("test_download_callback");
+}
+
 pub unsafe fn run_all_api_tests() {
-    let api_test_folder = run_fetch_test();
+    let (test_document, api_test_folder) = run_fetch_test();
     run_new_documents_test(api_test_folder);
+    if let Some(document) = test_document {
+        run_download_callback_test(document);
+    }
 }

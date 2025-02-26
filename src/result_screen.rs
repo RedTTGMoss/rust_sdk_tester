@@ -61,7 +61,11 @@ impl ResultScreen {
             ResultScreen::open_action();
         }
 
-        if get_rm_time_now() - self.timer > 5000 {
+        let callback_finished = moss_em_config_get::<bool>("download_callback_called")
+            .unwrap()
+            .value;
+
+        if callback_finished && (get_rm_time_now() - self.timer > 2000) {
             moss_em_export_statistical_data().unwrap();
             moss_pe_close_screen().unwrap();
         }
