@@ -1,14 +1,16 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    get_rm_time_now, moss_api_collection_get_all, moss_api_document_get_all,
+    get_rm_time_now, moss_api_collection_get_all, moss_api_document_duplicate,
+    moss_api_document_ensure_download, moss_api_document_ensure_download_and_callback,
+    moss_api_document_export, moss_api_document_get_all, moss_api_document_load_files_from_cache,
     moss_api_document_new_epub, moss_api_document_new_notebook, moss_api_document_new_pdf,
-    moss_text_display, moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect,
-    moss_text_set_text,
+    moss_api_document_randomize_uuids, moss_api_document_unload_files, moss_text_display,
+    moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text,
 };
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use derive_builder::Builder;
-use extism_pdk::{error, FromBytes, Json, ToBytes};
+use extism_pdk::{error, Error, FromBytes, Json, ToBytes};
 use moss_macros::{moss_color, Accessors};
 use serde::{Deserialize, Serialize};
 
@@ -544,12 +546,12 @@ pub struct RM_DocumentCollection {
 }
 
 impl RM_DocumentCollection {
-    pub unsafe fn get(uuid: &str) -> Self {
+    pub unsafe fn get(uuid: &str) -> Result<Self, Error> {
         match moss_api_collection_get_all(uuid) {
-            Ok(document_collection) => document_collection,
+            Ok(document_collection) => Ok(document_collection),
             Err(e) => {
                 error!("Error retrieving document collection: {:?}", e);
-                panic!("Failed to retrieve document collection");
+                Err(e)
             }
         }
     }
@@ -577,54 +579,117 @@ pub struct RM_Document {
 }
 
 impl RM_Document {
-    pub unsafe fn get(uuid: &str) -> Self {
+    pub unsafe fn get(uuid: &str) -> Result<Self, Error> {
         match moss_api_document_get_all(uuid) {
-            Ok(document) => document,
+            Ok(document) => Ok(document),
             Err(e) => {
                 error!("Error retrieving document: {:?}", e);
-                panic!("Failed to retrieve document");
+                Err(e)
             }
         }
     }
 
-    pub unsafe fn new_notebook(
-        builder: DocumentNewNotebookBuilder,
-    ) -> Result<Self, DocumentNewNotebookBuilderError> {
+    pub unsafe fn _new_notebook(builder: DocumentNewNotebookBuilder) -> Result<String, Error> {
         let notebook = builder.build()?;
 
         match moss_api_document_new_notebook(notebook) {
-            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Ok(document_uuid) => Ok(document_uuid),
             Err(e) => {
                 error!("Error creating new notebook: {:?}", e);
-                panic!("Failed to create new notebook");
+                Err(e)
             }
         }
     }
-    pub unsafe fn new_pdf(
-        builder: DocumentNewPDFBuilder,
-    ) -> Result<Self, DocumentNewPDFBuilderError> {
+    pub unsafe fn _new_pdf(builder: DocumentNewPDFBuilder) -> Result<String, Error> {
         let pdf = builder.build()?;
 
         match moss_api_document_new_pdf(pdf) {
-            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Ok(document_uuid) => Ok(document_uuid),
             Err(e) => {
                 error!("Error creating new pdf: {:?}", e);
-                panic!("Failed to create new pdf");
+                Err(e)
             }
         }
     }
-    pub unsafe fn new_epub(
-        builder: DocumentNewEPUBBuilder,
-    ) -> Result<Self, DocumentNewEPUBBuilderError> {
+    pub unsafe fn _new_epub(builder: DocumentNewEPUBBuilder) -> Result<String, Error> {
         let epub = builder.build()?;
 
         match moss_api_document_new_epub(epub) {
-            Ok(document_uuid) => Ok(Self::get(document_uuid.as_str())),
+            Ok(document_uuid) => Ok(document_uuid),
             Err(e) => {
                 error!("Error creating new pdf: {:?}", e);
-                panic!("Failed to create new pdf");
+                Err(e)
             }
         }
+    }
+    pub unsafe fn new_notebook(builder: DocumentNewNotebookBuilder) -> Result<Self, Error> {
+        match Self::_new_notebook(builder) {
+            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Err(e) => Err(e),
+        }
+    }
+    pub unsafe fn new_pdf(builder: DocumentNewPDFBuilder) -> Result<Self, Error> {
+        match Self::_new_pdf(builder) {
+            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Err(e) => Err(e),
+        }
+    }
+    pub unsafe fn new_epub(builder: DocumentNewEPUBBuilder) -> Result<Self, Error> {
+        match Self::_new_epub(builder) {
+            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub unsafe fn _duplicate(&self) -> Result<String, Error> {
+        match moss_api_document_duplicate(self.uuid.as_str()) {
+            Ok(document_uuid) => Ok(document_uuid),
+            Err(e) => {
+                error!("Error duplicating document: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn duplicate(&self) -> Result<Self, Error> {
+        match self._duplicate() {
+            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub unsafe fn _randomize_uuids(&self) -> Result<String, Error> {
+        match moss_api_document_randomize_uuids(self.uuid.as_str()) {
+            Ok(document_uuid) => Ok(document_uuid),
+            Err(e) => {
+                error!("Error randomizing document UUIDs: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn randomize_uuids(&self) -> Result<Self, Error> {
+        match self._randomize_uuids() {
+            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub unsafe fn unload_files(&self) {
+        moss_api_document_unload_files(self.uuid.as_str()).unwrap()
+    }
+    pub unsafe fn load_files_from_cache(&self) {
+        moss_api_document_load_files_from_cache(self.uuid.as_str()).unwrap()
+    }
+
+    pub unsafe fn ensure_download_and_callback(&self, callback: &str) {
+        moss_api_document_ensure_download_and_callback(self.uuid.as_str(), callback).unwrap()
+    }
+    pub unsafe fn ensure_download(&self) {
+        moss_api_document_ensure_download(self.uuid.as_str()).unwrap()
+    }
+    pub unsafe fn export(&self) {
+        moss_api_document_export(self.uuid.as_str()).unwrap()
     }
 }
 

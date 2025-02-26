@@ -102,19 +102,29 @@ extern "ExtismHost" {
     pub fn moss_api_document_new_notebook(value: DocumentNewNotebook) -> String;
     pub fn moss_api_document_new_pdf(value: DocumentNewPDF) -> String;
     pub fn moss_api_document_new_epub(value: DocumentNewEPUB) -> String;
+
+    pub fn moss_api_document_duplicate(document_uuid: &str) -> String;
+    pub fn moss_api_document_randomize_uuids(document_uuid: &str) -> String;
+    pub fn moss_api_document_unload_files(document_uuid: &str);
+    pub fn moss_api_document_load_files_from_cache(document_uuid: &str);
+    pub fn moss_api_document_ensure_download_and_callback(document_uuid: &str, callback: &str);
+    pub fn moss_api_document_ensure_download(document_uuid: &str);
+    pub fn moss_api_document_export(document_uuid: &str);
 }
 
 pub unsafe fn moss_em_config_set<T: Serialize>(key: &str, value: T) {
-    let _ = _moss_em_config_set::<T>(ConfigSet::<T> {
+    _moss_em_config_set::<T>(ConfigSet::<T> {
         key: key.into(),
         value,
-    });
+    })
+    .unwrap();
 }
 pub unsafe fn moss_pe_set_screen_value<T: Serialize>(key: &str, value: T) {
-    let _ = _moss_pe_set_screen_value::<T>(ConfigSet::<T> {
+    _moss_pe_set_screen_value::<T>(ConfigSet::<T> {
         key: key.into(),
         value,
-    });
+    })
+    .unwrap();
 }
 
 pub unsafe fn moss_pe_open_screen<T: Serialize>(
@@ -126,10 +136,11 @@ pub unsafe fn moss_pe_open_screen<T: Serialize>(
 }
 
 pub unsafe fn moss_defaults_set<T: Serialize>(key: &str, value: T) {
-    let _ = _moss_defaults_set::<T>(ConfigSet::<T> {
+    _moss_defaults_set::<T>(ConfigSet::<T> {
         key: key.into(),
         value,
-    });
+    })
+    .unwrap();
 }
 
 pub unsafe fn moss_pe_draw_rect(
@@ -138,12 +149,13 @@ pub unsafe fn moss_pe_draw_rect(
     width: i64,
     edge_rounding: Option<PygameExtraRectEdgeRounding>,
 ) {
-    let _ = _moss_pe_draw_rect(PygameExtraRect {
+    _moss_pe_draw_rect(PygameExtraRect {
         color: color.to_owned(),
         rect: rect.to_owned(),
         width,
         edge_rounding,
-    });
+    })
+    .unwrap();
 }
 
 pub unsafe fn moss_api_document_metadata_set<T: Serialize>(
@@ -151,26 +163,28 @@ pub unsafe fn moss_api_document_metadata_set<T: Serialize>(
     key: &str,
     value: T,
 ) {
-    let _ = _moss_api_document_metadata_set(
+    _moss_api_document_metadata_set(
         document_uuid,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 pub unsafe fn moss_api_document_content_set<T: Serialize>(
     document_uuid: &str,
     key: &str,
     value: T,
 ) {
-    let _ = _moss_api_document_content_set(
+    _moss_api_document_content_set(
         document_uuid,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 
 pub unsafe fn moss_api_collection_metadata_set<T: Serialize>(
@@ -178,51 +192,56 @@ pub unsafe fn moss_api_collection_metadata_set<T: Serialize>(
     key: &str,
     value: T,
 ) {
-    let _ = _moss_api_collection_metadata_set(
+    _moss_api_collection_metadata_set(
         collection_uuid,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 
 pub unsafe fn moss_api_document_set<T: Serialize>(document_uuid: &str, key: &str, value: T) {
-    let _ = _moss_api_document_set(
+    _moss_api_document_set(
         document_uuid,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 pub unsafe fn moss_api_collection_set<T: Serialize>(collection_uuid: &str, key: &str, value: T) {
-    let _ = _moss_api_collection_set(
+    _moss_api_collection_set(
         collection_uuid,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 
 pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: &i64, key: &str, value: T) {
-    let _ = _moss_api_metadata_set(
+    _moss_api_metadata_set(
         metadata_id,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 pub unsafe fn moss_api_content_set<T: Serialize>(content_id: &i64, key: &str, value: T) {
-    let _ = _moss_api_content_set(
+    _moss_api_content_set(
         content_id,
         ConfigSet::<T> {
             key: key.into(),
             value,
         },
-    );
+    )
+    .unwrap();
 }
 
 #[link(wasm_import_module = "extism:host/user")]
