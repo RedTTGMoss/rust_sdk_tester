@@ -315,7 +315,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                             } else if let Some(ref collection_uuid) = self.collection_uuid {
                                 crate::moss_definitions::functions::#collection_set::<#field_ty>(collection_uuid, #field_name, value);
                             } else if let Some(ref #accessor_id) = self.#accessor_id {
-                                crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
+                                crate::moss_definitions::functions::#accessor_set::<#field_ty>(*#accessor_id, #field_name, value);
                             } else {
                                 panic!(#panic_collection);
                             }
@@ -325,7 +325,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                             if let Some(ref document_uuid) = self.document_uuid {
                                     crate::moss_definitions::functions::#document_set::<#field_ty>(document_uuid, #field_name, value);
                                 } else if let Some(ref #accessor_id) = self.#accessor_id {
-                                    crate::moss_definitions::functions::#accessor_set::<#field_ty>(#accessor_id, #field_name, value);
+                                    crate::moss_definitions::functions::#accessor_set::<#field_ty>(*#accessor_id, #field_name, value);
                                 } else {
                                     panic!(#panic_document);
                                 }
@@ -345,7 +345,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                             } else if let Some(ref collection_uuid) = self.collection_uuid {
                                 crate::moss_definitions::functions::#collection_get::<#field_ty>(collection_uuid, #field_name)
                             } else if let Some(ref #accessor_id) = self.#accessor_id {
-                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(#accessor_id, #field_name)
+                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(*#accessor_id, #field_name)
                             } else {
                                 Err(extism_pdk::Error::msg(#panic_collection))
                             }
@@ -355,7 +355,7 @@ pub fn accessors_derive(input: TokenStream) -> TokenStream {
                             return if let Some(ref document_uuid) = self.document_uuid {
                                 crate::moss_definitions::functions::#document_get::<#field_ty>(document_uuid, #field_name)
                             } else if let Some(ref #accessor_id) = self.#accessor_id {
-                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(#accessor_id, #field_name)
+                                crate::moss_definitions::functions::#accessor_get::<#field_ty>(*#accessor_id, #field_name)
                             } else {
                                 Err(extism_pdk::Error::msg(#panic_document))
                             }

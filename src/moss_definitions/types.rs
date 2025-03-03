@@ -1,18 +1,65 @@
 #![allow(non_camel_case_types)]
 
+use crate::DocumentNewPDFBuilderError::ValidationError;
 use crate::{
     get_rm_time_now, moss_api_collection_get_all, moss_api_document_duplicate,
     moss_api_document_ensure_download, moss_api_document_ensure_download_and_callback,
     moss_api_document_export, moss_api_document_get_all, moss_api_document_load_files_from_cache,
     moss_api_document_new_epub, moss_api_document_new_notebook, moss_api_document_new_pdf,
-    moss_api_document_randomize_uuids, moss_api_document_unload_files, moss_text_display,
-    moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text,
+    moss_api_document_randomize_uuids, moss_api_document_unload_files, moss_api_metadata_get_all,
+    moss_api_metadata_new, moss_text_display, moss_text_get_rect, moss_text_make,
+    moss_text_set_font, moss_text_set_rect, moss_text_set_text,
 };
+use base64::engine::general_purpose;
+use base64::Engine;
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use derive_builder::Builder;
 use extism_pdk::{error, Error, FromBytes, Json, ToBytes};
 use moss_macros::{moss_color, Accessors};
 use serde::{Deserialize, Serialize};
+use std::io::{BufReader, Read};
+
+// Metadata types
+#[allow(dead_code)]
+static DOCUMENT_TYPE: &str = "DocumentType";
+
+#[allow(dead_code)]
+static COLLECTION_TYPE: &str = "CollectionType";
+
+// Serialization for bytes to base64
+#[derive(Debug, Clone, PartialEq)]
+pub struct Base64VecU8(pub Vec<u8>);
+
+impl Base64VecU8 {
+    pub fn from_reader<R: Read>(reader: BufReader<R>) -> Self {
+        let mut buffer = Vec::new();
+        reader.into_inner().read_to_end(&mut buffer).unwrap();
+        Self(buffer)
+    }
+}
+
+impl Serialize for Base64VecU8 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let encoded = general_purpose::STANDARD.encode(&self.0);
+        serializer.serialize_str(&encoded)
+    }
+}
+
+impl<'de> Deserialize<'de> for Base64VecU8 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let decoded = general_purpose::STANDARD
+            .decode(&s)
+            .map_err(serde::de::Error::custom)?;
+        Ok(Base64VecU8(decoded))
+    }
+}
 
 #[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
 #[builder(pattern = "owned")]
@@ -25,8 +72,10 @@ pub struct DocumentNewNotebook {
     document_uuid: Option<String>,
     #[builder(default = "1")]
     page_count: i64,
-    #[builder(default = "Vec::new()")]
-    notebook_data: Vec<String>,
+    #[builder(default = "Some(Vec::new())")]
+    pdf_data: Option<Vec<Base64VecU8>>,
+    #[builder(default = "Some(Vec::new())")]
+    pdf_files: Option<Vec<String>>,
     #[builder(default)]
     metadata_id: Option<String>,
     #[builder(default)]
@@ -37,22 +86,62 @@ pub struct DocumentNewNotebook {
 #[encoding(Json)]
 pub struct DocumentNewPDF {
     name: String,
-    pdf_data: String,
+    #[builder(default)]
+    pdf_data: Option<Base64VecU8>,
+    #[builder(default)]
+    pdf_file: Option<String>,
     #[builder(default)]
     parent: Option<String>,
     #[builder(default)]
     document_uuid: Option<String>,
 }
+
+impl DocumentNewPDFBuilder {
+    fn validate(&self) -> Result<(), Error> {
+        if self.pdf_data.is_none() && self.pdf_file.is_none() {
+            return Err(Error::from(ValidationError(
+                "Either pdf_data or pdf_file must be provided".to_string(),
+            )));
+        }
+        Ok(())
+    }
+}
+
 #[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
 #[builder(pattern = "owned")]
 #[encoding(Json)]
 pub struct DocumentNewEPUB {
     name: String,
-    epub_data: String,
+    #[builder(default)]
+    epub_data: Option<Base64VecU8>,
+    #[builder(default)]
+    epub_file: Option<String>,
     #[builder(default)]
     parent: Option<String>,
     #[builder(default)]
     document_uuid: Option<String>,
+}
+
+impl DocumentNewEPUBBuilder {
+    fn validate(&self) -> Result<(), Error> {
+        if self.epub_data.is_none() && self.epub_file.is_none() {
+            return Err(Error::from(ValidationError(
+                "Either epub_data or epub_file must be provided".to_string(),
+            )));
+        }
+        Ok(())
+    }
+}
+
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[builder(pattern = "owned")]
+#[encoding(Json)]
+pub struct MetadataNew {
+    name: String,
+    #[builder(default)]
+    parent: Option<String>,
+    #[builder(default = "Some(DOCUMENT_TYPE)")]
+    document_type: Option<&'static str>,
 }
 
 #[derive(ToBytes, FromBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
@@ -533,6 +622,36 @@ pub struct RM_Metadata {
     pub metadata_id: Option<i64>,
 }
 
+impl RM_Metadata {
+    pub unsafe fn get(id: i64) -> Result<Self, Error> {
+        match moss_api_metadata_get_all(id) {
+            Ok(metadata) => Ok(metadata),
+            Err(e) => {
+                error!("Error retrieving metadata: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn _new(builder: MetadataNewBuilder) -> Result<i64, Error> {
+        let metadata = builder.build()?;
+
+        match moss_api_metadata_new(metadata) {
+            Ok(metadata_id) => Ok(metadata_id),
+            Err(e) => {
+                error!("Error creating new metadata: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+    pub unsafe fn new(builder: MetadataNewBuilder) -> Result<Self, Error> {
+        match Self::_new(builder) {
+            Ok(metadata_id) => Self::get(metadata_id),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
 #[accessor_type("collection")]
 #[accessor_uuid(true)]
@@ -601,6 +720,7 @@ impl RM_Document {
         }
     }
     pub unsafe fn _new_pdf(builder: DocumentNewPDFBuilder) -> Result<String, Error> {
+        builder.validate()?;
         let pdf = builder.build()?;
 
         match moss_api_document_new_pdf(pdf) {
@@ -612,6 +732,7 @@ impl RM_Document {
         }
     }
     pub unsafe fn _new_epub(builder: DocumentNewEPUBBuilder) -> Result<String, Error> {
+        builder.validate()?;
         let epub = builder.build()?;
 
         match moss_api_document_new_epub(epub) {

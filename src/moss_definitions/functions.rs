@@ -77,12 +77,12 @@ extern "ExtismHost" {
     pub fn _moss_api_document_metadata_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
     pub fn moss_api_document_metadata_get_all(document_uuid: &str) -> RM_Metadata;
     pub fn moss_api_metadata_get<T: for<'de> Deserialize<'de>>(
-        metadata_id: &i64,
+        metadata_id: i64,
         key: &str,
     ) -> ConfigGet<T>;
     #[link_name = "moss_api_metadata_set"]
-    pub fn _moss_api_metadata_set<T: Serialize>(metadata_id: &i64, value: ConfigSet<T>);
-    pub fn moss_api_metadata_get_all(metadata_id: &i64) -> RM_Metadata;
+    pub fn _moss_api_metadata_set<T: Serialize>(metadata_id: i64, value: ConfigSet<T>);
+    pub fn moss_api_metadata_get_all(metadata_id: i64) -> RM_Metadata;
     pub fn moss_api_document_content_get<T: for<'de> Deserialize<'de>>(
         document_uuid: &str,
         key: &str,
@@ -91,12 +91,12 @@ extern "ExtismHost" {
     pub fn _moss_api_document_content_set<T: Serialize>(document_uuid: &str, value: ConfigSet<T>);
     pub fn moss_api_document_content_get_all(document_uuid: &str) -> RM_Content;
     pub fn moss_api_content_get<T: for<'de> Deserialize<'de>>(
-        content_id: &i64,
+        content_id: i64,
         key: &str,
     ) -> ConfigGet<T>;
     #[link_name = "moss_api_content_set"]
-    pub fn _moss_api_content_set<T: Serialize>(content_id: &i64, value: ConfigSet<T>);
-    pub fn moss_api_content_get_all(content_id: &str) -> RM_Content;
+    pub fn _moss_api_content_set<T: Serialize>(content_id: i64, value: ConfigSet<T>);
+    pub fn moss_api_content_get_all(content_id: i64) -> RM_Content;
 
     // Document host functions
     pub fn moss_api_document_new_notebook(value: DocumentNewNotebook) -> String;
@@ -110,6 +110,9 @@ extern "ExtismHost" {
     pub fn moss_api_document_ensure_download_and_callback(document_uuid: &str, callback: &str);
     pub fn moss_api_document_ensure_download(document_uuid: &str);
     pub fn moss_api_document_export(document_uuid: &str);
+
+    // Metadata host functions
+    pub fn moss_api_metadata_new(value: MetadataNew) -> i64;
 }
 
 pub unsafe fn moss_em_config_set<T: Serialize>(key: &str, value: T) {
@@ -223,7 +226,7 @@ pub unsafe fn moss_api_collection_set<T: Serialize>(collection_uuid: &str, key: 
     .unwrap();
 }
 
-pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: &i64, key: &str, value: T) {
+pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: i64, key: &str, value: T) {
     _moss_api_metadata_set(
         metadata_id,
         ConfigSet::<T> {
@@ -233,7 +236,7 @@ pub unsafe fn moss_api_metadata_set<T: Serialize>(metadata_id: &i64, key: &str, 
     )
     .unwrap();
 }
-pub unsafe fn moss_api_content_set<T: Serialize>(content_id: &i64, key: &str, value: T) {
+pub unsafe fn moss_api_content_set<T: Serialize>(content_id: i64, key: &str, value: T) {
     _moss_api_content_set(
         content_id,
         ConfigSet::<T> {
