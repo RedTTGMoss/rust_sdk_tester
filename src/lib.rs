@@ -30,7 +30,7 @@ pub unsafe fn moss_extension_register(Json(_state): Json<MossState>) -> FnResult
     Ok(ExtensionInfo {
         files: [File {
             key: "test_icon".to_string(),
-            path: "assets/test_icon.svg".to_string(),
+            path: "extension/assets/test_icon.svg".to_string(),
         }]
         .to_vec(),
     })
