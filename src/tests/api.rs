@@ -1,10 +1,11 @@
 use crate::{
     moss_api_collection_metadata_get_all, moss_api_document_content_get_all,
-    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set,
-    DocumentNewEPUBBuilder, DocumentNewNotebookBuilder, DocumentNewPDFBuilder, RM_Document,
-    RM_DocumentCollection,
+    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set, Base64VecU8,
+    DocumentNewEPUBBuilder, DocumentNewNotebookBuilder, DocumentNewPDFBuilder, MetadataNewBuilder,
+    RM_Document, RM_DocumentCollection, RM_Metadata,
 };
 use extism_pdk::{error, plugin_fn, Error, FnResult};
+use std::fs::File;
 
 const DOCUMENT_UUID_ERROR: &str = "Test document not found, please check config";
 const DOCUMENT_UUID_KEY: &str = "test_document_uuid";
@@ -120,7 +121,7 @@ pub unsafe fn run_new_pdf_test(api_test_folder: Option<String>) -> Result<(), Er
     match RM_Document::new_pdf(
         DocumentNewPDFBuilder::default()
             .name("Test PDF".to_string())
-            .pdf_data("extension/assets/test_pdf.pdf".to_string())
+            .pdf_file(Some("extension/assets/test_pdf.pdf".to_string()))
             .parent(api_test_folder),
     ) {
         Ok(_) => Ok(()),
@@ -128,10 +129,13 @@ pub unsafe fn run_new_pdf_test(api_test_folder: Option<String>) -> Result<(), Er
     }
 }
 pub unsafe fn run_new_epub_test(api_test_folder: Option<String>) -> Result<(), Error> {
+    let epub_file = File::open("extension/assets/test_epub.epub").unwrap();
+    let epub_reader = std::io::BufReader::new(epub_file);
+
     match RM_Document::new_epub(
         DocumentNewEPUBBuilder::default()
             .name("Test EPUB".to_string())
-            .epub_data("extension/assets/test_epub.epub".to_string())
+            .epub_data(Some(Base64VecU8::from_reader(epub_reader)))
             .parent(api_test_folder),
     ) {
         Ok(_) => Ok(()),
@@ -204,10 +208,22 @@ pub unsafe fn run_download_callback_test(document: RM_Document) {
     document.ensure_download_and_callback("test_download_callback");
 }
 
+pub unsafe fn run_new_metadata_test() {
+    match RM_Metadata::new(MetadataNewBuilder::default().name("Test Metadata".to_string())) {
+        Ok(mut metadata) => {
+            metadata.set_visible_name("TEST SUCCEEDED 4!".to_string());
+        }
+        Err(e) => {
+            error!("New metadata creation failed: {}", e);
+        }
+    }
+}
+
 pub unsafe fn run_all_api_tests() {
     let (test_document, api_test_folder) = run_fetch_test();
     run_new_documents_test(api_test_folder);
     if let Some(document) = test_document {
         run_download_callback_test(document);
     }
+    run_new_metadata_test();
 }
