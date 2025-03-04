@@ -1,30 +1,32 @@
 #![allow(non_camel_case_types)]
 
+use crate::moss_definitions::accessors::{
+    Accessor, AccessorSubType, AccessorType, ACCESSOR_API_DOCUMENT, ACCESSOR_STANDALONE_DOCUMENT,
+};
 use crate::DocumentNewPDFBuilderError::ValidationError;
 use crate::{
-    get_rm_time_now, moss_api_collection_get_all, moss_api_document_duplicate,
-    moss_api_document_ensure_download, moss_api_document_ensure_download_and_callback,
-    moss_api_document_export, moss_api_document_get_all, moss_api_document_load_files_from_cache,
-    moss_api_document_new_epub, moss_api_document_new_notebook, moss_api_document_new_pdf,
-    moss_api_document_randomize_uuids, moss_api_document_unload_files, moss_api_metadata_get_all,
-    moss_api_metadata_new, moss_text_display, moss_text_get_rect, moss_text_make,
-    moss_text_set_font, moss_text_set_rect, moss_text_set_text,
+    get_rm_time_now, moss_api_document_duplicate, moss_api_document_ensure_download,
+    moss_api_document_ensure_download_and_callback, moss_api_document_export,
+    moss_api_document_load_files_from_cache, moss_api_document_new_epub,
+    moss_api_document_new_notebook, moss_api_document_new_pdf, moss_api_document_randomize_uuids,
+    moss_api_document_unload_files, moss_api_get_all, moss_api_metadata_new, moss_text_display,
+    moss_text_get_rect, moss_text_make, moss_text_set_font, moss_text_set_rect, moss_text_set_text,
 };
 use base64::engine::general_purpose;
 use base64::Engine;
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use derive_builder::Builder;
-use extism_pdk::{error, Error, FromBytes, Json, ToBytes};
-use moss_macros::{moss_color, Accessors};
+use extism_pdk::{error, info, Error, FromBytes, Json, ToBytes};
+use moss_macros::{moss_color, Accessors, DocumentAccessorBuilder};
 use serde::{Deserialize, Serialize};
 use std::io::{BufReader, Read};
 
 // Metadata types
 #[allow(dead_code)]
-static DOCUMENT_TYPE: &str = "DocumentType";
+pub static DOCUMENT_TYPE: &str = "DocumentType";
 
 #[allow(dead_code)]
-static COLLECTION_TYPE: &str = "CollectionType";
+pub static COLLECTION_TYPE: &str = "CollectionType";
 
 // Serialization for bytes to base64
 #[derive(Debug, Clone, PartialEq)]
@@ -61,27 +63,28 @@ impl<'de> Deserialize<'de> for Base64VecU8 {
     }
 }
 
-#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder, DocumentAccessorBuilder)]
 #[builder(pattern = "owned")]
 #[encoding(Json)]
 pub struct DocumentNewNotebook {
     name: String,
     #[builder(default)]
     parent: Option<String>,
-    #[builder(default)]
-    document_uuid: Option<String>,
     #[builder(default = "1")]
     page_count: i64,
     #[builder(default = "Some(Vec::new())")]
-    pdf_data: Option<Vec<Base64VecU8>>,
+    notebook_data: Option<Vec<Base64VecU8>>,
     #[builder(default = "Some(Vec::new())")]
-    pdf_files: Option<Vec<String>>,
+    notebook_files: Option<Vec<String>>,
     #[builder(default)]
     metadata_id: Option<String>,
     #[builder(default)]
     content_id: Option<String>,
+    #[builder(default = "Accessor::unknown_api_document()")]
+    accessor: Accessor,
 }
-#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder, DocumentAccessorBuilder)]
 #[builder(pattern = "owned")]
 #[encoding(Json)]
 pub struct DocumentNewPDF {
@@ -92,8 +95,8 @@ pub struct DocumentNewPDF {
     pdf_file: Option<String>,
     #[builder(default)]
     parent: Option<String>,
-    #[builder(default)]
-    document_uuid: Option<String>,
+    #[builder(default = "Accessor::unknown_api_document()")]
+    accessor: Accessor,
 }
 
 impl DocumentNewPDFBuilder {
@@ -107,7 +110,7 @@ impl DocumentNewPDFBuilder {
     }
 }
 
-#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder)]
+#[derive(ToBytes, Serialize, PartialEq, Debug, Clone, Builder, DocumentAccessorBuilder)]
 #[builder(pattern = "owned")]
 #[encoding(Json)]
 pub struct DocumentNewEPUB {
@@ -118,8 +121,8 @@ pub struct DocumentNewEPUB {
     epub_file: Option<String>,
     #[builder(default)]
     parent: Option<String>,
-    #[builder(default)]
-    document_uuid: Option<String>,
+    #[builder(default = "Accessor::unknown_api_document()")]
+    accessor: Accessor,
 }
 
 impl DocumentNewEPUBBuilder {
@@ -596,8 +599,37 @@ pub struct RM_Content {
     pub size_in_bytes: i64,
     pub dummy_document: bool,
     // reference data
-    pub document_uuid: Option<String>,
-    pub content_id: Option<i64>,
+    pub accessor: Accessor,
+}
+
+impl RM_Content {
+    pub unsafe fn get(id: i64) -> Result<Self, Error> {
+        match moss_api_get_all::<Self>(&Accessor::standalone_content(id)) {
+            Ok(get) => Ok(get.value),
+            Err(e) => {
+                error!("Error retrieving content: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn _get_from_document(uuid: String, item_type: AccessorType) -> Result<Self, Error> {
+        match moss_api_get_all::<Self>(&Accessor::document_content(uuid, item_type)) {
+            Ok(get) => Ok(get.value),
+            Err(e) => {
+                error!("Error retrieving content: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn get_from_api_document(uuid: String) -> Result<Self, Error> {
+        Self::_get_from_document(uuid, AccessorType::ApiItem)
+    }
+
+    pub unsafe fn get_from_standalone_document(uuid: String) -> Result<Self, Error> {
+        Self::_get_from_document(uuid, AccessorType::StandaloneItem)
+    }
 }
 
 #[derive(FromBytes, ToBytes, Deserialize, Serialize, PartialEq, Debug, Clone, Accessors)]
@@ -617,20 +649,54 @@ pub struct RM_Metadata {
     pub last_opened: Option<i64>,
     pub last_opened_page: Option<i64>,
     // reference data
-    pub document_uuid: Option<String>,
-    pub collection_uuid: Option<String>,
-    pub metadata_id: Option<i64>,
+    pub accessor: Accessor,
 }
 
 impl RM_Metadata {
     pub unsafe fn get(id: i64) -> Result<Self, Error> {
-        match moss_api_metadata_get_all(id) {
-            Ok(metadata) => Ok(metadata),
+        match moss_api_get_all::<Self>(&Accessor::standalone_metadata(id)) {
+            Ok(get) => Ok(get.value),
             Err(e) => {
                 error!("Error retrieving metadata: {:?}", e);
                 Err(e)
             }
         }
+    }
+    pub unsafe fn _get_from(
+        uuid: String,
+        item_type: AccessorType,
+        sub_type: AccessorSubType,
+    ) -> Result<Self, Error> {
+        match moss_api_get_all::<Self>(&Accessor::sub_metadata(uuid, item_type, sub_type)) {
+            Ok(get) => Ok(get.value),
+            Err(e) => {
+                error!("Error retrieving metadata: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn get_from_api_document(uuid: String) -> Result<Self, Error> {
+        Self::_get_from(uuid, AccessorType::ApiItem, AccessorSubType::Document)
+    }
+
+    pub unsafe fn get_from_standalone_document(uuid: String) -> Result<Self, Error> {
+        Self::_get_from(
+            uuid,
+            AccessorType::StandaloneItem,
+            AccessorSubType::Document,
+        )
+    }
+    pub unsafe fn get_from_api_collection(uuid: String) -> Result<Self, Error> {
+        Self::_get_from(uuid, AccessorType::ApiItem, AccessorSubType::Collection)
+    }
+
+    pub unsafe fn get_from_standalone_collection(uuid: String) -> Result<Self, Error> {
+        Self::_get_from(
+            uuid,
+            AccessorType::StandaloneItem,
+            AccessorSubType::Collection,
+        )
     }
 
     pub unsafe fn _new(builder: MetadataNewBuilder) -> Result<i64, Error> {
@@ -662,12 +728,13 @@ pub struct RM_DocumentCollection {
     pub metadata: RM_Metadata,
     pub uuid: String,
     pub has_items: bool,
+    pub accessor: Accessor,
 }
 
 impl RM_DocumentCollection {
-    pub unsafe fn get(uuid: &str) -> Result<Self, Error> {
-        match moss_api_collection_get_all(uuid) {
-            Ok(document_collection) => Ok(document_collection),
+    pub unsafe fn get(uuid: String) -> Result<Self, Error> {
+        match moss_api_get_all::<Self>(&Accessor::api_collection(uuid)) {
+            Ok(get) => Ok(get.value),
             Err(e) => {
                 error!("Error retrieving document collection: {:?}", e);
                 Err(e)
@@ -695,12 +762,14 @@ pub struct RM_Document {
     pub provision: bool,
     #[accessor(exclude)]
     pub available: bool,
+    pub accessor: Accessor,
 }
 
 impl RM_Document {
-    pub unsafe fn get(uuid: &str) -> Result<Self, Error> {
-        match moss_api_document_get_all(uuid) {
-            Ok(document) => Ok(document),
+    pub unsafe fn _get_with_accessor(accessor: &Accessor) -> Result<Self, Error> {
+        info!("Getting document with accessor: {:?}", accessor);
+        match moss_api_get_all::<Self>(accessor) {
+            Ok(get) => Ok(get.value),
             Err(e) => {
                 error!("Error retrieving document: {:?}", e);
                 Err(e)
@@ -708,35 +777,53 @@ impl RM_Document {
         }
     }
 
-    pub unsafe fn _new_notebook(builder: DocumentNewNotebookBuilder) -> Result<String, Error> {
+    pub unsafe fn _get(uuid: String, item_type: AccessorType) -> Result<Self, Error> {
+        Self::_get_with_accessor(&Accessor::document(uuid, item_type))
+    }
+
+    pub unsafe fn get_api(uuid: String) -> Result<Self, Error> {
+        Self::_get(uuid, AccessorType::ApiItem)
+    }
+
+    pub unsafe fn get_standalone(uuid: String) -> Result<Self, Error> {
+        Self::_get(uuid, AccessorType::StandaloneItem)
+    }
+
+    pub unsafe fn _new_notebook(builder: DocumentNewNotebookBuilder) -> Result<Accessor, Error> {
         let notebook = builder.build()?;
 
-        match moss_api_document_new_notebook(notebook) {
-            Ok(document_uuid) => Ok(document_uuid),
+        match moss_api_document_new_notebook(&notebook) {
+            Ok(document_uuid) => {
+                info!(
+                    "The accessor is: {}",
+                    notebook.accessor.new_uuid(document_uuid.clone())
+                );
+                Ok(notebook.accessor.new_uuid(document_uuid))
+            }
             Err(e) => {
                 error!("Error creating new notebook: {:?}", e);
                 Err(e)
             }
         }
     }
-    pub unsafe fn _new_pdf(builder: DocumentNewPDFBuilder) -> Result<String, Error> {
+    pub unsafe fn _new_pdf(builder: DocumentNewPDFBuilder) -> Result<Accessor, Error> {
         builder.validate()?;
         let pdf = builder.build()?;
 
-        match moss_api_document_new_pdf(pdf) {
-            Ok(document_uuid) => Ok(document_uuid),
+        match moss_api_document_new_pdf(&pdf) {
+            Ok(document_uuid) => Ok(pdf.accessor.new_uuid(document_uuid)),
             Err(e) => {
                 error!("Error creating new pdf: {:?}", e);
                 Err(e)
             }
         }
     }
-    pub unsafe fn _new_epub(builder: DocumentNewEPUBBuilder) -> Result<String, Error> {
+    pub unsafe fn _new_epub(builder: DocumentNewEPUBBuilder) -> Result<Accessor, Error> {
         builder.validate()?;
         let epub = builder.build()?;
 
-        match moss_api_document_new_epub(epub) {
-            Ok(document_uuid) => Ok(document_uuid),
+        match moss_api_document_new_epub(&epub) {
+            Ok(document_uuid) => Ok(epub.accessor.new_uuid(document_uuid)),
             Err(e) => {
                 error!("Error creating new pdf: {:?}", e);
                 Err(e)
@@ -745,25 +832,25 @@ impl RM_Document {
     }
     pub unsafe fn new_notebook(builder: DocumentNewNotebookBuilder) -> Result<Self, Error> {
         match Self::_new_notebook(builder) {
-            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Ok(document_accessor) => Self::_get_with_accessor(&document_accessor),
             Err(e) => Err(e),
         }
     }
     pub unsafe fn new_pdf(builder: DocumentNewPDFBuilder) -> Result<Self, Error> {
         match Self::_new_pdf(builder) {
-            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Ok(document_accessor) => Self::_get_with_accessor(&document_accessor),
             Err(e) => Err(e),
         }
     }
     pub unsafe fn new_epub(builder: DocumentNewEPUBBuilder) -> Result<Self, Error> {
         match Self::_new_epub(builder) {
-            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Ok(document_accessor) => Self::_get_with_accessor(&document_accessor),
             Err(e) => Err(e),
         }
     }
 
     pub unsafe fn _duplicate(&self) -> Result<String, Error> {
-        match moss_api_document_duplicate(self.uuid.as_str()) {
+        match moss_api_document_duplicate(&self.accessor) {
             Ok(document_uuid) => Ok(document_uuid),
             Err(e) => {
                 error!("Error duplicating document: {:?}", e);
@@ -774,13 +861,13 @@ impl RM_Document {
 
     pub unsafe fn duplicate(&self) -> Result<Self, Error> {
         match self._duplicate() {
-            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Ok(document_uuid) => Self::_get_with_accessor(&self.accessor.new_uuid(document_uuid)),
             Err(e) => Err(e),
         }
     }
 
     pub unsafe fn _randomize_uuids(&self) -> Result<String, Error> {
-        match moss_api_document_randomize_uuids(self.uuid.as_str()) {
+        match moss_api_document_randomize_uuids(&self.accessor) {
             Ok(document_uuid) => Ok(document_uuid),
             Err(e) => {
                 error!("Error randomizing document UUIDs: {:?}", e);
@@ -791,26 +878,26 @@ impl RM_Document {
 
     pub unsafe fn randomize_uuids(&self) -> Result<Self, Error> {
         match self._randomize_uuids() {
-            Ok(document_uuid) => Self::get(document_uuid.as_str()),
+            Ok(document_uuid) => Self::_get_with_accessor(&self.accessor.new_uuid(document_uuid)),
             Err(e) => Err(e),
         }
     }
 
     pub unsafe fn unload_files(&self) {
-        moss_api_document_unload_files(self.uuid.as_str()).unwrap()
+        moss_api_document_unload_files(&self.accessor).unwrap()
     }
     pub unsafe fn load_files_from_cache(&self) {
-        moss_api_document_load_files_from_cache(self.uuid.as_str()).unwrap()
+        moss_api_document_load_files_from_cache(&self.accessor).unwrap()
     }
 
     pub unsafe fn ensure_download_and_callback(&self, callback: &str) {
-        moss_api_document_ensure_download_and_callback(self.uuid.as_str(), callback).unwrap()
+        moss_api_document_ensure_download_and_callback(&self.accessor, callback).unwrap()
     }
     pub unsafe fn ensure_download(&self) {
-        moss_api_document_ensure_download(self.uuid.as_str()).unwrap()
+        moss_api_document_ensure_download(&self.accessor).unwrap()
     }
     pub unsafe fn export(&self) {
-        moss_api_document_export(self.uuid.as_str()).unwrap()
+        moss_api_document_export(&self.accessor).unwrap()
     }
 }
 
