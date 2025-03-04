@@ -767,7 +767,6 @@ pub struct RM_Document {
 
 impl RM_Document {
     pub unsafe fn _get_with_accessor(accessor: &Accessor) -> Result<Self, Error> {
-        info!("Getting document with accessor: {:?}", accessor);
         match moss_api_get_all::<Self>(accessor) {
             Ok(get) => Ok(get.value),
             Err(e) => {
