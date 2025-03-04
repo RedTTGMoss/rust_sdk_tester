@@ -1,8 +1,7 @@
 use crate::{
-    moss_api_collection_metadata_get_all, moss_api_document_content_get_all,
-    moss_api_document_metadata_get_all, moss_em_config_get, moss_em_config_set, Base64VecU8,
-    DocumentNewEPUBBuilder, DocumentNewNotebookBuilder, DocumentNewPDFBuilder, MetadataNewBuilder,
-    RM_Document, RM_DocumentCollection, RM_Metadata,
+    moss_em_config_get, moss_em_config_set, Base64VecU8, DocumentNewEPUBBuilder,
+    DocumentNewNotebookBuilder, DocumentNewPDFBuilder, MetadataNewBuilder, RM_Content, RM_Document,
+    RM_DocumentCollection, RM_Metadata,
 };
 use extism_pdk::{error, plugin_fn, Error, FnResult};
 use std::fs::File;
@@ -26,7 +25,7 @@ pub unsafe fn run_existing_document_test() -> Result<RM_Document, String> {
         }
     }
 
-    let mut document = RM_Document::get(document_uuid.as_str())
+    let mut document = RM_Document::get_api(document_uuid.clone())
         .map_err(|e| format!("Error retrieving document collection: {:?}", e))?;
     document
         .metadata
@@ -35,8 +34,8 @@ pub unsafe fn run_existing_document_test() -> Result<RM_Document, String> {
     document.set_provision(true);
     assert_eq!(document.provision, document.get_provision().unwrap().value);
 
-    let mut document_metadata = moss_api_document_metadata_get_all(document_uuid.as_str()).unwrap();
-    let mut document_content = moss_api_document_content_get_all(document_uuid.as_str()).unwrap();
+    let mut document_metadata = RM_Metadata::get_from_api_document(document_uuid.clone()).unwrap();
+    let mut document_content = RM_Content::get_from_api_document(document_uuid.clone()).unwrap();
     document_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
     document_content.set_usable(false);
     assert_eq!(
@@ -63,7 +62,7 @@ pub unsafe fn run_existing_collection_test() -> Result<Option<String>, String> {
         }
     }
 
-    let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.as_str())
+    let mut document_collection = RM_DocumentCollection::get(document_collection_uuid.clone())
         .map_err(|e| format!("Error retrieving document collection: {:?}", e))?;
     document_collection
         .metadata
@@ -75,7 +74,7 @@ pub unsafe fn run_existing_collection_test() -> Result<Option<String>, String> {
     );
 
     let mut collection_metadata =
-        moss_api_collection_metadata_get_all(document_collection_uuid.as_str()).unwrap();
+        RM_Metadata::get_from_api_collection(document_collection_uuid.clone()).unwrap();
     collection_metadata.set_visible_name("TEST SUCCEEDED 2!".to_string());
     assert_eq!(
         collection_metadata.visible_name.clone(),
@@ -165,7 +164,7 @@ pub unsafe fn run_new_documents_test(api_test_folder: Option<String>) {
 }
 
 pub unsafe fn _test_document_functions(document_uuid: String) -> FnResult<()> {
-    let document = RM_Document::get(document_uuid.as_str())?;
+    let document = RM_Document::get_api(document_uuid.clone())?;
     document.unload_files();
     document.ensure_download();
     document.unload_files();
