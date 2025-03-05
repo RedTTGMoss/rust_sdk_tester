@@ -5,7 +5,8 @@ use crate::moss_definitions::accessors::{
 };
 use crate::DocumentNewPDFBuilderError::ValidationError;
 use crate::{
-    get_rm_time_now, moss_api_document_duplicate, moss_api_document_ensure_download,
+    get_rm_time_now, moss_api_content_new_epub, moss_api_content_new_notebook,
+    moss_api_content_new_pdf, moss_api_document_duplicate, moss_api_document_ensure_download,
     moss_api_document_ensure_download_and_callback, moss_api_document_export,
     moss_api_document_load_files_from_cache, moss_api_document_new_epub,
     moss_api_document_new_notebook, moss_api_document_new_pdf, moss_api_document_randomize_uuids,
@@ -629,6 +630,55 @@ impl RM_Content {
 
     pub unsafe fn get_from_standalone_document(uuid: String) -> Result<Self, Error> {
         Self::_get_from_document(uuid, AccessorType::StandaloneItem)
+    }
+
+    pub unsafe fn _new_notebook(page_count: i64) -> Result<i64, Error> {
+        match moss_api_content_new_notebook(page_count) {
+            Ok(content_id) => Ok(content_id),
+            Err(e) => {
+                error!("Error creating new notebook content: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+    pub unsafe fn _new_pdf() -> Result<i64, Error> {
+        match moss_api_content_new_pdf() {
+            Ok(content_id) => Ok(content_id),
+            Err(e) => {
+                error!("Error creating new PDF content: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+    pub unsafe fn _new_epub() -> Result<i64, Error> {
+        match moss_api_content_new_epub() {
+            Ok(content_id) => Ok(content_id),
+            Err(e) => {
+                error!("Error creating new EPUB content: {:?}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub unsafe fn new_notebook(page_count: i64) -> Result<Self, Error> {
+        match Self::_new_notebook(page_count) {
+            Ok(content_id) => Self::get(content_id),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub unsafe fn new_pdf() -> Result<Self, Error> {
+        match Self::_new_pdf() {
+            Ok(content_id) => Self::get(content_id),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub unsafe fn new_epub() -> Result<Self, Error> {
+        match Self::_new_epub() {
+            Ok(content_id) => Self::get(content_id),
+            Err(e) => Err(e),
+        }
     }
 }
 

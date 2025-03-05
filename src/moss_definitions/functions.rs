@@ -53,6 +53,7 @@ extern "ExtismHost" {
     #[link_name = "moss_api_set"]
     pub fn _moss_api_set<T: Serialize>(accessor: &Accessor, value: ConfigSet<T>);
     pub fn moss_api_get_all<T: for<'de> Deserialize<'de>>(accessor: &Accessor) -> ConfigGet<T>;
+
     // Document host functions
     pub fn moss_api_document_new_notebook(value: &DocumentNewNotebook) -> String;
     pub fn moss_api_document_new_pdf(value: &DocumentNewPDF) -> String;
@@ -68,6 +69,11 @@ extern "ExtismHost" {
 
     // Metadata host functions
     pub fn moss_api_metadata_new(value: MetadataNew) -> i64;
+
+    // Content host functions
+    pub fn moss_api_content_new_notebook(page_count: i64) -> i64;
+    pub fn moss_api_content_new_pdf() -> i64;
+    pub fn moss_api_content_new_epub() -> i64;
 }
 
 pub unsafe fn moss_em_config_set<T: Serialize>(key: &str, value: T) {
