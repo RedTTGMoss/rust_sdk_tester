@@ -217,6 +217,26 @@ pub unsafe fn run_new_metadata_test() {
         }
     }
 }
+pub unsafe fn run_new_content_test() {
+    match RM_Content::_new_notebook(1) {
+        Err(e) => {
+            error!("New notebook content creation failed: {}", e);
+        }
+        _ => {}
+    }
+    match RM_Content::_new_pdf() {
+        Err(e) => {
+            error!("New PDF content creation failed: {}", e);
+        }
+        _ => {}
+    }
+    match RM_Content::_new_epub() {
+        Err(e) => {
+            error!("New EPUB content creation failed: {}", e);
+        }
+        _ => {}
+    }
+}
 
 pub unsafe fn run_all_api_tests() {
     let (test_document, api_test_folder) = run_fetch_test();
@@ -225,4 +245,5 @@ pub unsafe fn run_all_api_tests() {
         run_download_callback_test(document);
     }
     run_new_metadata_test();
+    run_new_content_test();
 }
